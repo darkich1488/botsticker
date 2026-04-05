@@ -63,6 +63,8 @@ _EMOJI6_FIXED_FONT_SIZE = 56.0
 _EMOJI6_VISUAL_Y_NUDGE_PX = -22.0
 _EMOJI8_TEMPLATE_FILE = "emoji7.json"
 _EMOJI8_NESTED_TEXT_TEMPLATE_FILE = "emoji8.json"
+_EMOJI8_NESTED_FIXED_FONT_SIZE = 43.2
+_EMOJI8_NESTED_VISUAL_X_NUDGE_PX = -120.0
 _EMOJI8_FIXED_FONT_SIZE = 64.0
 _EMOJI8_VISUAL_X_NUDGE_PX = -12.0
 _EMOJI8_VISUAL_Y_NUDGE_PX = -8.0
@@ -2133,6 +2135,8 @@ def inject_text_shapes(
             desired_visual_x_nudge_px = _EMOJI4_TEMPLATE_EXTRA_X_NUDGE
         elif template_name_lc == _EMOJI8_TEMPLATE_FILE:
             desired_visual_x_nudge_px = _EMOJI8_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI8_NESTED_TEXT_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI8_NESTED_VISUAL_X_NUDGE_PX
         if abs(desired_visual_x_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list) and tr_k:
@@ -3194,6 +3198,8 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI6_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI8_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI8_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI8_NESTED_TEXT_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI8_NESTED_FIXED_FONT_SIZE
     target_names = {name.lower() for name in (target_layer_names or set())}
     comp_width = _as_float(data.get("w"))
     comp_height = _as_float(data.get("h"))
