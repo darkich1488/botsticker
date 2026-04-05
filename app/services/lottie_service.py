@@ -3380,7 +3380,7 @@ def replace_text_in_lottie(
                     previous_size = _as_float(style.get("s"))
                     extra_shrink_px = 1.0 + max(0, text_len_for_template - 5) * 0.75
                     style["s"] = round(
-                        max(float(effective_text_box.min_font_size), float(computed_autofit_size) - extra_shrink_px),
+                        max(float(effective_text_box.min_font_size), float(style["s"]) - extra_shrink_px),
                         6,
                     )
                     active_logger.info(
