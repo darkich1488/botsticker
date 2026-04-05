@@ -3378,7 +3378,7 @@ def replace_text_in_lottie(
                 text_len_for_template = _text_len_for_fit(str(style.get("t", new_text)))
                 if template_name_value.lower() == _EMOJI4_TEMPLATE_FILE and text_len_for_template > 4:
                     previous_size = _as_float(style.get("s"))
-                    extra_shrink_px = 2.0 + max(0, text_len_for_template - 5) * 1.5
+                    extra_shrink_px = 1.0 + max(0, text_len_for_template - 5) * 0.75
                     style["s"] = round(
                         max(float(effective_text_box.min_font_size), float(computed_autofit_size) - extra_shrink_px),
                         6,
