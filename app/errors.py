@@ -3,6 +3,7 @@
 import logging
 
 from aiogram import Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ErrorEvent
 
@@ -21,6 +22,9 @@ async def on_error(
     user_repository: InMemoryUserRepository,
     pricing_service: PricingService,
 ) -> None:
+    if isinstance(event.exception, TelegramBadRequest) and "message is not modified" in str(event.exception).lower():
+        logger.info("Ignore benign TelegramBadRequest: message is not modified")
+        return
     logger.exception("Unhandled error: %s", event.exception)
     update = event.update
 

@@ -4,6 +4,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
+from time import perf_counter
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -22,6 +23,7 @@ from app.services.template_repository import TemplateRepository
 from app.services.user_repository import InMemoryUserRepository
 from app.states import CreatePackState, MainMenuState
 from app.utils.files import slugify
+from app.utils.safe_edit import safe_edit_message
 
 router = Router(name="payment")
 logger = logging.getLogger(__name__)
@@ -49,6 +51,7 @@ async def to_payment(
     user_repository: InMemoryUserRepository,
     pricing_service: PricingService,
 ) -> None:
+    t0 = perf_counter()
     if callback.message is None or callback.from_user is None:
         return
 
@@ -113,24 +116,39 @@ async def to_payment(
     await state.update_data(invoice_id=invoice.id, payment_amount=invoice.amount)
     await state.set_state(CreatePackState.payment)
 
-    await callback.message.edit_text(
-        "Оплата\n\n"
-        f"Стикеров: {template_count}\n"
-        f"Цена за 1 стикер: {stars_per_sticker} ⭐\n"
-        f"Итого: {stars_total} ⭐\n\n"
-        "Оплатите инвойс ниже и нажмите «Проверить оплату».",
-        reply_markup=payment_kb(invoice.id),
-    )
+    try:
+        await safe_edit_message(
+            message=callback.message,
+            text=(
+                "Оплата\n\n"
+                f"Стикеров: {template_count}\n"
+                f"Цена за 1 стикер: {stars_per_sticker} ⭐\n"
+                f"Итого: {stars_total} ⭐\n\n"
+                "Оплатите инвойс ниже и нажмите «Проверить оплату»."
+            ),
+            reply_markup=payment_kb(invoice.id),
+            logger=logger,
+            handler_name="to_payment",
+            callback_data=callback.data,
+            update_id=callback.id,
+        )
 
-    await callback.message.answer_invoice(
-        title="Оплата emoji pack",
-        description=f"{template_count} стикеров × {stars_per_sticker} ⭐",
-        payload=invoice.id,
-        currency="XTR",
-        prices=[LabeledPrice(label="Emoji pack", amount=stars_total)],
-        start_parameter=f"emoji_{invoice.id}",
-    )
-    await callback.answer()
+        await callback.message.answer_invoice(
+            title="Оплата emoji pack",
+            description=f"{template_count} стикеров × {stars_per_sticker} ⭐",
+            payload=invoice.id,
+            currency="XTR",
+            prices=[LabeledPrice(label="Emoji pack", amount=stars_total)],
+            start_parameter=f"emoji_{invoice.id}",
+        )
+        await callback.answer()
+    finally:
+        logger.info(
+            "Callback timing handler_name=to_payment callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.pre_checkout_query()
@@ -199,14 +217,23 @@ async def payment_cancel(
     user_repository: InMemoryUserRepository,
     pricing_service: PricingService,
 ) -> None:
-    from app.start import show_main_menu
+    t0 = perf_counter()
+    try:
+        from app.start import show_main_menu
 
-    await show_main_menu(
-        target=callback,
-        state=state,
-        user_repository=user_repository,
-        pricing_service=pricing_service,
-    )
+        await show_main_menu(
+            target=callback,
+            state=state,
+            user_repository=user_repository,
+            pricing_service=pricing_service,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=payment_cancel callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 async def _run_generation_pipeline(
@@ -498,6 +525,7 @@ async def payment_check(
     user_repository: InMemoryUserRepository,
     pricing_service: PricingService,
 ) -> None:
+    t0 = perf_counter()
     if callback.from_user is None or callback.message is None:
         return
 
@@ -534,6 +562,13 @@ async def payment_check(
             state=state,
             user_repository=user_repository,
             pricing_service=pricing_service,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=payment_check callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
         )
 
 

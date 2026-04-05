@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import logging
+from time import perf_counter
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -14,6 +15,7 @@ from app.services.pricing_service import PricingService
 from app.services.template_repository import TemplateRepository
 from app.services.user_repository import InMemoryUserRepository
 from app.states import CreatePackState
+from app.utils.safe_edit import safe_edit_message
 
 router = Router(name="create_pack")
 logger = logging.getLogger(__name__)
@@ -92,7 +94,15 @@ async def show_template_selection_screen(
 
     if isinstance(target, CallbackQuery):
         if target.message:
-            await target.message.edit_text(text, reply_markup=kb)
+            await safe_edit_message(
+                message=target.message,
+                text=text,
+                reply_markup=kb,
+                logger=logger,
+                handler_name="show_template_selection_screen",
+                callback_data=target.data,
+                update_id=target.id,
+            )
         await target.answer()
     else:
         await target.answer(text, reply_markup=kb)
@@ -105,31 +115,47 @@ async def choose_category(
     state: FSMContext,
     template_repository: TemplateRepository,
 ) -> None:
-    category = template_repository.get_category(callback_data.category_id)
-    if category is None:
-        await callback.answer("Пакет не найден.", show_alert=True)
-        return
+    t0 = perf_counter()
+    try:
+        category = template_repository.get_category(callback_data.category_id)
+        if category is None:
+            await callback.answer("Пакет не найден.", show_alert=True)
+            return
 
-    if category.id == "recolor":
-        await callback.answer("Раздел «Перекрас» в разработке, очень скоро.", show_alert=True)
-        return
+        if category.id == "recolor":
+            await callback.answer("Раздел «Перекрас» в разработке, очень скоро.", show_alert=True)
+            return
 
-    await state.update_data(
-        selected_category_id=category.id,
-        input_text="",
-        pack_title="",
-        selected_template_ids=[],
-        current_page=1,
-        preview_context_id=None,
-        random_mode=False,
-        awaiting_page_input=False,
-        flow_prompt_message_id=callback.message.message_id if callback.message else None,
-    )
-    await state.set_state(CreatePackState.waiting_text)
+        await state.update_data(
+            selected_category_id=category.id,
+            input_text="",
+            pack_title="",
+            selected_template_ids=[],
+            current_page=1,
+            preview_context_id=None,
+            random_mode=False,
+            awaiting_page_input=False,
+            flow_prompt_message_id=callback.message.message_id if callback.message else None,
+        )
+        await state.set_state(CreatePackState.waiting_text)
 
-    if callback.message:
-        await callback.message.edit_text("Введите текст для стикеров.")
-    await callback.answer()
+        if callback.message:
+            await safe_edit_message(
+                message=callback.message,
+                text="Введите текст для стикеров.",
+                logger=logger,
+                handler_name="choose_category",
+                callback_data=callback.data,
+                update_id=callback.id,
+            )
+        await callback.answer()
+    finally:
+        logger.info(
+            "Callback timing handler_name=choose_category callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.message(CreatePackState.waiting_text)
@@ -186,26 +212,35 @@ async def toggle_template(
     pricing_service: PricingService,
     settings: Settings,
 ) -> None:
-    data = await state.get_data()
-    selected_ids = set(data.get("selected_template_ids", []))
-    template = template_repository.get_template_by_id(callback_data.template_id)
-    if template is None:
-        await callback.answer("Шаблон не найден.", show_alert=True)
-        return
+    t0 = perf_counter()
+    try:
+        data = await state.get_data()
+        selected_ids = set(data.get("selected_template_ids", []))
+        template = template_repository.get_template_by_id(callback_data.template_id)
+        if template is None:
+            await callback.answer("Шаблон не найден.", show_alert=True)
+            return
 
-    if callback_data.template_id in selected_ids:
-        selected_ids.remove(callback_data.template_id)
-    else:
-        selected_ids.add(callback_data.template_id)
+        if callback_data.template_id in selected_ids:
+            selected_ids.remove(callback_data.template_id)
+        else:
+            selected_ids.add(callback_data.template_id)
 
-    await state.update_data(selected_template_ids=sorted(selected_ids))
-    await show_template_selection_screen(
-        target=callback,
-        state=state,
-        template_repository=template_repository,
-        pricing_service=pricing_service,
-        settings=settings,
-    )
+        await state.update_data(selected_template_ids=sorted(selected_ids))
+        await show_template_selection_screen(
+            target=callback,
+            state=state,
+            template_repository=template_repository,
+            pricing_service=pricing_service,
+            settings=settings,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=toggle_template callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.callback_query(CreatePackState.choosing_templates, TemplatePageCallback.filter())
@@ -217,14 +252,23 @@ async def change_page(
     pricing_service: PricingService,
     settings: Settings,
 ) -> None:
-    await state.update_data(current_page=callback_data.page)
-    await show_template_selection_screen(
-        target=callback,
-        state=state,
-        template_repository=template_repository,
-        pricing_service=pricing_service,
-        settings=settings,
-    )
+    t0 = perf_counter()
+    try:
+        await state.update_data(current_page=callback_data.page)
+        await show_template_selection_screen(
+            target=callback,
+            state=state,
+            template_repository=template_repository,
+            pricing_service=pricing_service,
+            settings=settings,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=change_page callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.callback_query(CreatePackState.choosing_templates, TemplateActionCallback.filter(F.action == "random_here"))
@@ -235,22 +279,31 @@ async def random_here(
     pricing_service: PricingService,
     settings: Settings,
 ) -> None:
-    data = await state.get_data()
-    category_id = data.get("selected_category_id")
-    if not isinstance(category_id, str):
-        await callback.answer("Категория не выбрана.", show_alert=True)
-        return
-    random_templates = template_repository.random_templates(category_id=category_id, count=None)
-    selected_ids = [item.id for item in random_templates]
-    await state.update_data(selected_template_ids=selected_ids)
-    await callback.answer(f"Выбрано случайно: {len(selected_ids)}")
-    await show_template_selection_screen(
-        target=callback,
-        state=state,
-        template_repository=template_repository,
-        pricing_service=pricing_service,
-        settings=settings,
-    )
+    t0 = perf_counter()
+    try:
+        data = await state.get_data()
+        category_id = data.get("selected_category_id")
+        if not isinstance(category_id, str):
+            await callback.answer("Категория не выбрана.", show_alert=True)
+            return
+        random_templates = template_repository.random_templates(category_id=category_id, count=None)
+        selected_ids = [item.id for item in random_templates]
+        await state.update_data(selected_template_ids=selected_ids)
+        await callback.answer(f"Выбрано случайно: {len(selected_ids)}")
+        await show_template_selection_screen(
+            target=callback,
+            state=state,
+            template_repository=template_repository,
+            pricing_service=pricing_service,
+            settings=settings,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=random_here callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.callback_query(CreatePackState.choosing_templates, TemplateActionCallback.filter(F.action == "select_all"))
@@ -261,28 +314,46 @@ async def select_all_templates(
     pricing_service: PricingService,
     settings: Settings,
 ) -> None:
-    data = await state.get_data()
-    category_id = data.get("selected_category_id")
-    if not isinstance(category_id, str):
-        await callback.answer("Категория не выбрана.", show_alert=True)
-        return
-    selected_ids = [item.id for item in template_repository.get_templates_by_category(category_id)]
-    await state.update_data(selected_template_ids=selected_ids)
-    await show_template_selection_screen(
-        target=callback,
-        state=state,
-        template_repository=template_repository,
-        pricing_service=pricing_service,
-        settings=settings,
-    )
+    t0 = perf_counter()
+    try:
+        data = await state.get_data()
+        category_id = data.get("selected_category_id")
+        if not isinstance(category_id, str):
+            await callback.answer("Категория не выбрана.", show_alert=True)
+            return
+        selected_ids = [item.id for item in template_repository.get_templates_by_category(category_id)]
+        await state.update_data(selected_template_ids=selected_ids)
+        await show_template_selection_screen(
+            target=callback,
+            state=state,
+            template_repository=template_repository,
+            pricing_service=pricing_service,
+            settings=settings,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=select_all_templates callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.callback_query(CreatePackState.choosing_templates, TemplateActionCallback.filter(F.action == "page_pick"))
 async def page_pick_prompt(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(awaiting_page_input=True)
-    if callback.message:
-        await callback.message.answer("Введите номер страницы сообщением.")
-    await callback.answer()
+    t0 = perf_counter()
+    try:
+        await state.update_data(awaiting_page_input=True)
+        if callback.message:
+            await callback.message.answer("Введите номер страницы сообщением.")
+        await callback.answer()
+    finally:
+        logger.info(
+            "Callback timing handler_name=page_pick_prompt callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.callback_query(CreatePackState.choosing_templates, TemplateActionCallback.filter(F.action == "back_mode"))
@@ -292,19 +363,37 @@ async def back_to_main_menu(
     user_repository: InMemoryUserRepository,
     pricing_service: PricingService,
 ) -> None:
-    from app.start import show_main_menu
+    t0 = perf_counter()
+    try:
+        from app.start import show_main_menu
 
-    await show_main_menu(
-        target=callback,
-        state=state,
-        user_repository=user_repository,
-        pricing_service=pricing_service,
-    )
+        await show_main_menu(
+            target=callback,
+            state=state,
+            user_repository=user_repository,
+            pricing_service=pricing_service,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=back_to_main_menu callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.callback_query(CreatePackState.choosing_templates, TemplateActionCallback.filter(F.action == "noop"))
 async def noop_action(callback: CallbackQuery) -> None:
-    await callback.answer()
+    t0 = perf_counter()
+    try:
+        await callback.answer()
+    finally:
+        logger.info(
+            "Callback timing handler_name=noop_action callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.message(CreatePackState.choosing_templates)

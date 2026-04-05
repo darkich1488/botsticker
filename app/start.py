@@ -1,6 +1,8 @@
 ﻿from __future__ import annotations
 
+import asyncio
 import logging
+from time import perf_counter
 
 from aiogram import F, Router
 from aiogram.filters import CommandStart
@@ -15,9 +17,39 @@ from app.services.pricing_service import PricingService
 from app.services.template_repository import TemplateRepository
 from app.services.user_repository import InMemoryUserRepository
 from app.states import CreatePackState, MainMenuState
+from app.utils.safe_edit import safe_edit_message
 
 router = Router(name="start")
 logger = logging.getLogger(__name__)
+
+
+async def _run_admin_broadcast(
+    *,
+    source_message: Message,
+    admin_id: int,
+    user_ids: list[int],
+    text: str | None,
+    photo_id: str | None,
+    caption: str,
+) -> None:
+    sent = 0
+    failed = 0
+    for uid in user_ids:
+        try:
+            if photo_id:
+                await source_message.bot.send_photo(uid, photo=photo_id, caption=caption)
+            elif text:
+                await source_message.bot.send_message(uid, text)
+            sent += 1
+        except Exception:
+            failed += 1
+    try:
+        await source_message.bot.send_message(
+            admin_id,
+            f"Рассылка завершена. Отправлено: {sent}, ошибок: {failed}.",
+        )
+    except Exception:
+        logger.warning("Broadcast summary failed admin_id=%s", admin_id, exc_info=True)
 
 
 async def show_main_menu(
@@ -44,7 +76,15 @@ async def show_main_menu(
 
     reply_markup = main_menu_kb(include_admin=user_repository.is_admin(user_id))
     if isinstance(target, CallbackQuery):
-        await message.edit_text(text, reply_markup=reply_markup)
+        await safe_edit_message(
+            message=message,
+            text=text,
+            reply_markup=reply_markup,
+            logger=logger,
+            handler_name="show_main_menu",
+            callback_data=target.data,
+            update_id=target.id,
+        )
         await target.answer()
     else:
         await message.answer(text, reply_markup=reply_markup)
@@ -73,21 +113,39 @@ async def back_main(
     user_repository: InMemoryUserRepository,
     pricing_service: PricingService,
 ) -> None:
-    await state.clear()
-    await show_main_menu(
-        target=callback,
-        state=state,
-        user_repository=user_repository,
-        pricing_service=pricing_service,
-    )
+    t0 = perf_counter()
+    try:
+        await state.clear()
+        await show_main_menu(
+            target=callback,
+            state=state,
+            user_repository=user_repository,
+            pricing_service=pricing_service,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=back_main callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.callback_query(MainMenuState.idle, MainMenuCallback.filter(F.action == "promo"))
 async def promo_callback(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(MainMenuState.waiting_promo)
-    if callback.message:
-        await callback.message.answer("Введите промокод сообщением.")
-    await callback.answer()
+    t0 = perf_counter()
+    try:
+        await state.set_state(MainMenuState.waiting_promo)
+        if callback.message:
+            await callback.message.answer("Введите промокод сообщением.")
+        await callback.answer()
+    finally:
+        logger.info(
+            "Callback timing handler_name=promo_callback callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.message(MainMenuState.waiting_promo)
@@ -119,15 +177,24 @@ async def admin_broadcast_start(
     state: FSMContext,
     user_repository: InMemoryUserRepository,
 ) -> None:
-    if callback.from_user is None:
-        return
-    if not user_repository.is_admin(callback.from_user.id):
-        await callback.answer("Недостаточно прав.", show_alert=True)
-        return
-    await state.set_state(MainMenuState.waiting_broadcast)
-    if callback.message:
-        await callback.message.answer("Отправьте текст или фото с подписью для рассылки.")
-    await callback.answer()
+    t0 = perf_counter()
+    try:
+        if callback.from_user is None:
+            return
+        if not user_repository.is_admin(callback.from_user.id):
+            await callback.answer("Недостаточно прав.", show_alert=True)
+            return
+        await state.set_state(MainMenuState.waiting_broadcast)
+        if callback.message:
+            await callback.message.answer("Отправьте текст или фото с подписью для рассылки.")
+        await callback.answer()
+    finally:
+        logger.info(
+            "Callback timing handler_name=admin_broadcast_start callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
 
 
 @router.message(MainMenuState.waiting_broadcast)
@@ -160,31 +227,30 @@ async def admin_broadcast_send(
         )
         return
 
-    sent = 0
-    failed = 0
+    text_payload: str | None = None
+    photo_payload: str | None = None
+    caption_payload = ""
 
     if message.photo:
-        photo_id = message.photo[-1].file_id
-        caption = message.caption or ""
-        for uid in user_ids:
-            try:
-                await message.bot.send_photo(uid, photo=photo_id, caption=caption)
-                sent += 1
-            except Exception:
-                failed += 1
+        photo_payload = message.photo[-1].file_id
+        caption_payload = message.caption or ""
     elif message.text:
-        text = message.text
-        for uid in user_ids:
-            try:
-                await message.bot.send_message(uid, text)
-                sent += 1
-            except Exception:
-                failed += 1
+        text_payload = message.text
     else:
         await message.answer("Поддерживается только текст или фото с подписью.")
         return
 
-    await message.answer(f"Рассылка завершена. Отправлено: {sent}, ошибок: {failed}.")
+    asyncio.create_task(
+        _run_admin_broadcast(
+            source_message=message,
+            admin_id=admin_id,
+            user_ids=user_ids,
+            text=text_payload,
+            photo_id=photo_payload,
+            caption=caption_payload,
+        )
+    )
+    await message.answer("Рассылка запущена в фоне.")
     await show_main_menu(
         target=message,
         state=state,
@@ -199,13 +265,27 @@ async def new_pack_callback(
     state: FSMContext,
     template_repository: TemplateRepository,
 ) -> None:
+    t0 = perf_counter()
     if callback.message is None:
         return
-    categories = template_repository.get_categories()
-    await state.clear()
-    await state.set_state(CreatePackState.choosing_category)
-    await callback.message.edit_text(
-        "Создать стикерпак\n\nВыберите пакет шаблонов:",
-        reply_markup=categories_kb(categories),
-    )
-    await callback.answer()
+    try:
+        categories = template_repository.get_categories()
+        await state.clear()
+        await state.set_state(CreatePackState.choosing_category)
+        await safe_edit_message(
+            message=callback.message,
+            text="Создать стикерпак\n\nВыберите пакет шаблонов:",
+            reply_markup=categories_kb(categories),
+            logger=logger,
+            handler_name="new_pack_callback",
+            callback_data=callback.data,
+            update_id=callback.id,
+        )
+        await callback.answer()
+    finally:
+        logger.info(
+            "Callback timing handler_name=new_pack_callback callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )

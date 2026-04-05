@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -16,6 +17,7 @@ def _ensure_file_and_console_logging() -> None:
     root = logging.getLogger()
     if getattr(root, "_emoji_bot_logging_ready", False):
         return
+    enable_file_log = os.getenv("BOT_FILE_LOG", "0").strip().lower() in {"1", "true", "yes"}
 
     formatter = logging.Formatter(
         fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
@@ -35,7 +37,7 @@ def _ensure_file_and_console_logging() -> None:
         and Path(getattr(handler, "baseFilename", "")).name == DEFAULT_LOG_FILE
         for handler in root.handlers
     )
-    if not has_file:
+    if enable_file_log and not has_file:
         file_handler = logging.FileHandler(DEFAULT_LOG_FILE, encoding="utf-8")
         file_handler.setFormatter(formatter)
         root.addHandler(file_handler)
@@ -103,7 +105,7 @@ class ProgressService:
         message_key = (message.chat.id, message.message_id)
         previous_text = self._last_text_cache.get(message_key)
         if previous_text == text:
-            self._logger.info(
+            self._logger.debug(
                 "Progress skip unchanged stage=%s current_step=%s total_steps=%s "
                 "percent=%s detail=%s chat_id=%s message_id=%s",
                 stage_name,
@@ -141,7 +143,7 @@ class ProgressService:
             exc_text = str(exc).lower()
             if "message is not modified" in exc_text:
                 self._last_text_cache[message_key] = text
-                self._logger.info(
+                self._logger.debug(
                     "Progress edit ignored (not modified) chat_id=%s message_id=%s",
                     message.chat.id,
                     message.message_id,
