@@ -62,6 +62,7 @@ _EMOJI6_TEMPLATE_FILE = "emoji6.json"
 _EMOJI6_FIXED_FONT_SIZE = 56.0
 _EMOJI6_VISUAL_Y_NUDGE_PX = -22.0
 _EMOJI8_TEMPLATE_FILE = "emoji7.json"
+_EMOJI8_NESTED_TEXT_TEMPLATE_FILE = "emoji8.json"
 _EMOJI8_FIXED_FONT_SIZE = 64.0
 _EMOJI8_VISUAL_X_NUDGE_PX = -12.0
 _EMOJI8_VISUAL_Y_NUDGE_PX = -8.0
@@ -2704,6 +2705,20 @@ def _layer_is_hidden(layer: dict[str, Any]) -> bool:
     return bool(layer.get("hd"))
 
 
+def _count_non_glyph_text_layers_anywhere(node: Any) -> int:
+    count = 0
+    stack: list[Any] = [node]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, dict):
+            if current.get("ty") == 5 and not _is_glyph_bank_layer(str(current.get("nm", "")).strip()):
+                count += 1
+            stack.extend(current.values())
+        elif isinstance(current, list):
+            stack.extend(current)
+    return count
+
+
 def _layer_ks_value(layer: dict[str, Any], key: str) -> Any:
     ks = layer.get("ks")
     if isinstance(ks, dict):
@@ -4355,6 +4370,43 @@ class LottieService:
                 template_name=template_name,
                 logger=self._logger,
             )
+            template_name_norm = (template_name or "").strip().lower()
+            if template_name_norm == _EMOJI8_NESTED_TEXT_TEMPLATE_FILE:
+                nested_text_layers_found = 0
+                nested_text_layers_converted = 0
+                assets = payload.get("assets")
+                if isinstance(assets, list):
+                    for asset in assets:
+                        if not isinstance(asset, dict):
+                            continue
+                        asset_layers = asset.get("layers")
+                        if not isinstance(asset_layers, list):
+                            continue
+                        target_layers_in_asset = [
+                            layer
+                            for layer in asset_layers
+                            if isinstance(layer, dict)
+                            and layer.get("ty") == 5
+                            and not _is_glyph_bank_layer(str(layer.get("nm", "")).strip())
+                            and _normalize_name(str(layer.get("nm", "")).strip()) == _normalize_name(TARGET_TEXT_LAYER_NAME)
+                        ]
+                        if target_layers_in_asset:
+                            nested_text_layers_found += len(target_layers_in_asset)
+                            nested_text_layers_converted += inject_text_shapes(
+                                data=asset,
+                                layer_name=TARGET_TEXT_LAYER_NAME,
+                                template_name=template_name,
+                                logger=self._logger,
+                            )
+                        remove_glyph_bank_layers(data=asset, logger=self._logger)
+                remaining_text_layers_anywhere = _count_non_glyph_text_layers_anywhere(payload)
+                self._logger.info(
+                    "Emoji8 nested text conversion template_name=%s nested_text_layers_found=%s nested_text_layers_converted=%s remaining_text_layers_anywhere_in_payload=%s",
+                    template_name or None,
+                    nested_text_layers_found,
+                    nested_text_layers_converted,
+                    remaining_text_layers_anywhere,
+                )
             _log_shape_pipeline_diff(
                 before_data=before_shape_injection,
                 after_data=payload,
