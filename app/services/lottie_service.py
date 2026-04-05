@@ -3375,6 +3375,21 @@ def replace_text_in_lottie(
                 )
                 if source_text_size is not None:
                     style["s"] = round(source_text_size * _EMOJI4_FONT_SIZE_MULTIPLIER, 6)
+                text_len_for_template = _text_len_for_fit(str(style.get("t", new_text)))
+                if template_name_value.lower() == _EMOJI4_TEMPLATE_FILE and text_len_for_template > 4:
+                    previous_size = _as_float(style.get("s"))
+                    extra_shrink_px = 2.0 + max(0, text_len_for_template - 5) * 1.5
+                    style["s"] = round(
+                        max(float(effective_text_box.min_font_size), float(computed_autofit_size) - extra_shrink_px),
+                        6,
+                    )
+                    active_logger.info(
+                        "Template long-text shrink applied template_name=%s text_len=%s old_size=%s final_font_size=%s",
+                        template_name_value or None,
+                        text_len_for_template,
+                        previous_size,
+                        _as_float(style.get("s")),
+                    )
                 final_font_size = _as_float(style.get("s"))
                 active_logger.info(
                     "Text auto-fit shrink disabled template_name=%s old_size=%s computed_autofit_size=%s final_font_size=%s autofit_shrink_disabled=%s",
@@ -3394,6 +3409,21 @@ def replace_text_in_lottie(
                 )
             if fixed_font_size_for_template is not None:
                 style["s"] = round(float(fixed_font_size_for_template), 6)
+                text_len_for_template = _text_len_for_fit(str(style.get("t", new_text)))
+                if template_name_value.lower() == _EMOJI8_TEMPLATE_FILE and text_len_for_template > 4:
+                    previous_size = _as_float(style.get("s"))
+                    extra_shrink_px = 6.0 + max(0, text_len_for_template - 5) * 3.0
+                    style["s"] = round(
+                        max(18.0, float(style["s"]) - extra_shrink_px),
+                        6,
+                    )
+                    active_logger.info(
+                        "Template long-text shrink applied template_name=%s text_len=%s old_size=%s final_font_size=%s",
+                        template_name_value or None,
+                        text_len_for_template,
+                        previous_size,
+                        _as_float(style.get("s")),
+                    )
                 active_logger.info(
                     "Text auto-fit template fixed size template_name=%s old_size=%s final_font_size=%s",
                     template_name_value or None,
