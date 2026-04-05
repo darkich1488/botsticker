@@ -75,6 +75,8 @@ _EMOJI10_TEMPLATE_FILE = "emoji10.json"
 _EMOJI10_VISUAL_X_NUDGE_PX = 60.0
 _EMOJI10_TEXT_SIZE_MULTIPLIER = 3.0
 _EMOJI10_TEXT_SIZE_DELTA_PX = 25.0
+_EMOJI10_LONG_TEXT_SHRINK_BASE_PX = 6.0
+_EMOJI10_LONG_TEXT_SHRINK_STEP_PX = 3.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -3455,7 +3457,18 @@ def replace_text_in_lottie(
             if template_name_value.lower() == _EMOJI10_TEMPLATE_FILE:
                 emoji10_old_size = _as_float(style.get("s"))
                 if emoji10_old_size is not None:
-                    style["s"] = round(max(10.0, (emoji10_old_size * _EMOJI10_TEXT_SIZE_MULTIPLIER) - _EMOJI10_TEXT_SIZE_DELTA_PX), 6)
+                    emoji10_new_size = max(10.0, (emoji10_old_size * _EMOJI10_TEXT_SIZE_MULTIPLIER) - _EMOJI10_TEXT_SIZE_DELTA_PX)
+                    text_len_for_template = _text_len_for_fit(str(style.get("t", new_text)))
+                    if text_len_for_template > 4:
+                        emoji10_extra_shrink = _EMOJI10_LONG_TEXT_SHRINK_BASE_PX + max(0, text_len_for_template - 5) * _EMOJI10_LONG_TEXT_SHRINK_STEP_PX
+                        emoji10_new_size = max(10.0, emoji10_new_size - emoji10_extra_shrink)
+                        active_logger.info(
+                            "Template long-text shrink applied template_name=%s text_len=%s extra_shrink_px=%s",
+                            template_name_value or None,
+                            text_len_for_template,
+                            round(emoji10_extra_shrink, 6),
+                        )
+                    style["s"] = round(emoji10_new_size, 6)
                     active_logger.info(
                         "Template font size tweak template_name=%s old_size=%s final_font_size=%s",
                         template_name_value or None,
