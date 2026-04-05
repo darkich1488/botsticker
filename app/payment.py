@@ -58,8 +58,10 @@ async def to_payment(
     data = await state.get_data()
     context_id = data.get("preview_context_id")
     context = preview_service.get_context(context_id, user_id=callback.from_user.id) if isinstance(context_id, str) else None
+    category_id = data.get("selected_category_id")
+    selected_template_ids: list[int]
+    computed_price: float
     if context is None:
-        category_id = data.get("selected_category_id")
         input_text = data.get("input_text")
         selected_ids = data.get("selected_template_ids", [])
         if not isinstance(category_id, str) or not isinstance(input_text, str) or not selected_ids:
@@ -69,22 +71,31 @@ async def to_payment(
         if not templates:
             await callback.answer("Не удалось найти выбранные шаблоны.", show_alert=True)
             return
-        context = await preview_service.build_preview_context(
-            user_id=callback.from_user.id,
-            category_id=category_id,
-            templates=templates,
-            input_text=input_text,
-            stroke_color="#111111",
-            elements_color="#FFFFFF",
-            include_preview_assets=False,
-        )
+        selected_template_ids = [item.id for item in templates]
+        computed_price = pricing_service.calculate_templates_price(len(selected_template_ids))
         await state.update_data(
-            preview_context_id=context.context_id,
-            selected_template_ids=context.selected_template_ids,
+            selected_template_ids=selected_template_ids,
+        )
+        logger.info(
+            "to_payment fast path category=%s templates=%s price=%s context_reused=False",
+            category_id,
+            len(selected_template_ids),
+            computed_price,
+        )
+    else:
+        if not isinstance(category_id, str):
+            category_id = context.category_id
+        selected_template_ids = list(context.selected_template_ids)
+        computed_price = float(context.price)
+        logger.info(
+            "to_payment context path category=%s templates=%s price=%s context_reused=True",
+            category_id,
+            len(selected_template_ids),
+            computed_price,
         )
 
-    template_count = max(1, len(context.selected_template_ids))
-    stars_total = max(1, int(round(context.price)))
+    template_count = max(1, len(selected_template_ids))
+    stars_total = max(1, int(round(computed_price)))
     stars_per_sticker = max(1, stars_total // template_count)
 
     if user_repository.is_admin(callback.from_user.id):
@@ -111,7 +122,7 @@ async def to_payment(
     invoice = await payment_service.create_invoice(
         user_id=callback.from_user.id,
         amount=float(stars_total),
-        description=f"Emoji pack ({context.category_id})",
+        description=f"Emoji pack ({category_id if isinstance(category_id, str) else 'unknown'})",
     )
     await state.update_data(invoice_id=invoice.id, payment_amount=invoice.amount)
     await state.set_state(CreatePackState.payment)
