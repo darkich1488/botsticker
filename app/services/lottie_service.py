@@ -401,6 +401,23 @@ def _text_len_for_fit(value: str) -> int:
     return max(1, len(compact))
 
 
+def _max_word_letters_len(value: str) -> int:
+    words_by_letters = re.findall(r"[^\W\d_]+", value, flags=re.UNICODE)
+    if words_by_letters:
+        return max(len(word) for word in words_by_letters)
+    words = [chunk.strip() for chunk in re.split(r"\s+", value) if chunk.strip()]
+    return max((len(word) for word in words), default=0)
+
+
+def _long_word_size_penalty_px(max_word_len: int) -> float:
+    # If a single word is long, we reduce font size in steps:
+    # 7-12 letters -> ~2.5px, 13-18 -> ~4.5px, 19-24 -> ~6.5px, etc.
+    if max_word_len <= 6:
+        return 0.0
+    extra_steps = max(0, (max_word_len - 7) // 6)
+    return float(2.5 + (extra_steps * 2.0))
+
+
 def _heuristic_font_scale(text_len: int) -> float:
     if text_len <= 3:
         return 1.0
@@ -420,9 +437,12 @@ def _compute_text_box_layout_values(
     new_text: str,
     text_box_config: TextBoxConfig,
     old_tracking: float | None,
-) -> tuple[float, float, float]:
+) -> tuple[float, float, float, int, float]:
     text_len = _text_len_for_fit(new_text)
+    max_word_len = _max_word_letters_len(new_text)
+    word_penalty_px = _long_word_size_penalty_px(max_word_len)
     target_size = text_box_config.base_font_size * _heuristic_font_scale(text_len)
+    target_size = target_size - word_penalty_px
     target_size = min(text_box_config.base_font_size, target_size)
     target_size = max(text_box_config.min_font_size, target_size)
 
@@ -444,7 +464,13 @@ def _compute_text_box_layout_values(
         target_tracking = max(text_box_config.min_tracking, target_tracking - 0.5)
         estimated_width = _estimate_text_width(text_len, target_size, target_tracking)
 
-    return float(round(target_size, 3)), float(round(target_tracking, 3)), float(estimated_width)
+    return (
+        float(round(target_size, 3)),
+        float(round(target_tracking, 3)),
+        float(estimated_width),
+        int(max_word_len),
+        float(round(word_penalty_px, 3)),
+    )
 
 
 def _apply_text_box_layout(
@@ -457,7 +483,7 @@ def _apply_text_box_layout(
     text_len = _text_len_for_fit(new_text)
     old_size = _as_float(style.get("s"))
     old_tracking = _as_float(style.get("tr"))
-    target_size, target_tracking, estimated_width = _compute_text_box_layout_values(
+    target_size, target_tracking, estimated_width, max_word_len, word_penalty_px = _compute_text_box_layout_values(
         new_text=new_text,
         text_box_config=text_box_config,
         old_tracking=old_tracking,
@@ -472,7 +498,8 @@ def _apply_text_box_layout(
     logger.info(
         (
             "Text auto-fit path=%s text_len=%s old_size=%s new_size=%s old_tr=%s new_tr=%s "
-            "box_center=[%s,%s] box_size=[%s,%s] est_width=%s max_width=%s"
+            "box_center=[%s,%s] box_size=[%s,%s] est_width=%s max_width=%s "
+            "max_word_len=%s word_penalty_px=%s"
         ),
         path,
         text_len,
@@ -486,6 +513,8 @@ def _apply_text_box_layout(
         text_box_config.max_height,
         round(estimated_width, 2),
         text_box_config.max_width,
+        max_word_len,
+        word_penalty_px,
     )
     return float(style["s"]), float(style["tr"])
 
@@ -3319,7 +3348,7 @@ def replace_text_in_lottie(
                     logger=active_logger,
                 )
             elif effective_text_box is not None and autofit_shrink_disabled_for_template:
-                computed_autofit_size, _computed_tracking, _estimated_width = _compute_text_box_layout_values(
+                computed_autofit_size, _computed_tracking, _estimated_width, _max_word_len, _word_penalty_px = _compute_text_box_layout_values(
                     new_text=new_text,
                     text_box_config=effective_text_box,
                     old_tracking=_as_float(style.get("tr")),
