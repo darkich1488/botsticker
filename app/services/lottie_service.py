@@ -71,6 +71,7 @@ _EMOJI8_VISUAL_Y_NUDGE_PX = -8.0
 _EMOJI9_TEMPLATE_FILE = "emoji9.json"
 _EMOJI9_VISUAL_X_NUDGE_PX = -20.0
 _EMOJI9_TEXT_SIZE_DELTA_PX = 6.0
+_EMOJI10_TEMPLATE_FILE = "emoji10.json"
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -4422,7 +4423,7 @@ class LottieService:
                 logger=self._logger,
             )
             template_name_norm = (template_name or "").strip().lower()
-            if template_name_norm == _EMOJI8_NESTED_TEXT_TEMPLATE_FILE:
+            if template_name_norm in {_EMOJI8_NESTED_TEXT_TEMPLATE_FILE, _EMOJI10_TEMPLATE_FILE}:
                 nested_text_layers_found = 0
                 nested_text_layers_converted = 0
                 assets = payload.get("assets")
@@ -4452,7 +4453,7 @@ class LottieService:
                         remove_glyph_bank_layers(data=asset, logger=self._logger)
                 remaining_text_layers_anywhere = _count_non_glyph_text_layers_anywhere(payload)
                 self._logger.info(
-                    "Emoji8 nested text conversion template_name=%s nested_text_layers_found=%s nested_text_layers_converted=%s remaining_text_layers_anywhere_in_payload=%s",
+                    "Nested text conversion template_name=%s nested_text_layers_found=%s nested_text_layers_converted=%s remaining_text_layers_anywhere_in_payload=%s",
                     template_name or None,
                     nested_text_layers_found,
                     nested_text_layers_converted,
