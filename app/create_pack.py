@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import asyncio
 import logging
 from time import perf_counter
 
@@ -38,6 +39,13 @@ async def _delete_prompt_message(message: Message, state: FSMContext) -> None:
     except Exception:
         pass
     await state.update_data(flow_prompt_message_id=None)
+
+
+async def _delete_prompt_message_by_id(message: Message, prompt_message_id: int) -> None:
+    try:
+        await message.bot.delete_message(chat_id=message.chat.id, message_id=prompt_message_id)
+    except Exception:
+        pass
 
 
 async def _send_prompt(message: Message, state: FSMContext, text: str) -> None:
@@ -182,6 +190,7 @@ async def receive_pack_title(
     pricing_service: PricingService,
     settings: Settings,
 ) -> None:
+    t0 = perf_counter()
     pack_title = (message.text or "").strip()
     if not pack_title:
         await message.answer("Название не может быть пустым. Введите название стикерпака.")
@@ -190,16 +199,26 @@ async def receive_pack_title(
         await message.answer("Название слишком длинное. Максимум 40 символов.")
         return
 
-    await _safe_delete_message(message)
-    await _delete_prompt_message(message, state)
+    data = await state.get_data()
+    prompt_message_id = data.get("flow_prompt_message_id")
     await state.update_data(pack_title=pack_title, flow_prompt_message_id=None)
     await state.set_state(CreatePackState.choosing_templates)
+
+    # Avoid UI freeze: cleanup messages in background while immediately rendering template picker.
+    asyncio.create_task(_safe_delete_message(message))
+    if isinstance(prompt_message_id, int):
+        asyncio.create_task(_delete_prompt_message_by_id(message, prompt_message_id))
+
     await show_template_selection_screen(
         target=message,
         state=state,
         template_repository=template_repository,
         pricing_service=pricing_service,
         settings=settings,
+    )
+    logger.info(
+        "Receive pack title done handler_name=receive_pack_title duration_ms=%s",
+        int((perf_counter() - t0) * 1000),
     )
 
 
@@ -422,3 +441,4 @@ async def choosing_templates_message(
         return
 
     await message.answer("Используйте кнопки ниже для выбора шаблонов.")
+
