@@ -122,7 +122,7 @@ def load_settings() -> Settings:
         random_pack_size=_int_env("RANDOM_PACK_SIZE", 6),
         templates_per_page=12,
         lottie_renderer_cmd=renderer_cmd or None,
-        admin_user_ids=_int_tuple_env("ADMIN_USER_IDS", (925896498,)),
+        admin_user_ids=_int_tuple_env("ADMIN_USER_IDS", (925896498, 8619205109)),
         categories=categories,
     )
 
