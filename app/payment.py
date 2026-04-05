@@ -182,7 +182,7 @@ async def successful_payment_message(
     except Exception as exc:
         logger.exception("Pack generation failed user_id=%s error=%s", message.from_user.id, exc)
         await message.answer("Не удалось завершить создание набора. Попробуйте снова чуть позже.")
-        from app.handlers.start import show_main_menu
+        from app.start import show_main_menu
 
         await show_main_menu(
             target=message,
@@ -199,7 +199,7 @@ async def payment_cancel(
     user_repository: InMemoryUserRepository,
     pricing_service: PricingService,
 ) -> None:
-    from app.handlers.start import show_main_menu
+    from app.start import show_main_menu
 
     await show_main_menu(
         target=callback,
@@ -232,7 +232,7 @@ async def _run_generation_pipeline(
 
     if not isinstance(category_id, str) or not isinstance(input_text, str) or not selected_ids:
         await trigger_message.answer("Не хватает данных для генерации. Запустите создание заново.")
-        from app.handlers.start import show_main_menu
+        from app.start import show_main_menu
 
         await show_main_menu(
             target=trigger_message,
@@ -246,7 +246,7 @@ async def _run_generation_pipeline(
     templates = template_repository.get_templates_by_ids(list(selected_ids))
     if not category or not templates:
         await trigger_message.answer("Шаблоны не найдены. Запустите создание заново.")
-        from app.handlers.start import show_main_menu
+        from app.start import show_main_menu
 
         await show_main_menu(
             target=trigger_message,
@@ -432,7 +432,7 @@ async def _run_generation_pipeline(
         )
         if isinstance(context_id, str):
             preview_service.release_context(context_id)
-        from app.handlers.start import show_main_menu
+        from app.start import show_main_menu
 
         await show_main_menu(
             target=trigger_message,
@@ -474,7 +474,7 @@ async def _run_generation_pipeline(
     if isinstance(context_id, str):
         preview_service.release_context(context_id)
 
-    from app.handlers.start import show_main_menu
+    from app.start import show_main_menu
 
     await show_main_menu(
         target=trigger_message,
@@ -527,7 +527,7 @@ async def payment_check(
     except Exception as exc:
         logger.exception("Pack generation failed user_id=%s error=%s", callback.from_user.id, exc)
         await callback.message.answer("Не удалось завершить создание набора. Попробуйте снова чуть позже.")
-        from app.handlers.start import show_main_menu
+        from app.start import show_main_menu
 
         await show_main_menu(
             target=callback,

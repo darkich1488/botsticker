@@ -6,7 +6,7 @@ from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ErrorEvent
 
-from app.handlers.start import show_main_menu
+from app.start import show_main_menu
 from app.services.pricing_service import PricingService
 from app.services.user_repository import InMemoryUserRepository
 

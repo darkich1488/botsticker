@@ -6,8 +6,8 @@ from aiogram.types import CallbackQuery
 
 from app.callbacks import PreviewActionCallback, TemplateActionCallback
 from app.config import Settings
-from app.handlers.create_pack import show_template_selection_screen
-from app.handlers.preview_helpers import build_and_send_preview
+from app.create_pack import show_template_selection_screen
+from app.preview_helpers import build_and_send_preview
 from app.services.preview_service import PreviewService
 from app.services.pricing_service import PricingService
 from app.services.template_repository import TemplateRepository

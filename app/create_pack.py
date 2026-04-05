@@ -8,7 +8,7 @@ from aiogram.types import CallbackQuery, Message
 
 from app.callbacks import CategoryCallback, TemplateActionCallback, TemplatePageCallback, TemplateToggleCallback
 from app.config import Settings
-from app.handlers.ui import build_template_selection_text
+from app.ui import build_template_selection_text
 from app.keyboards.selection import template_selection_kb
 from app.services.pricing_service import PricingService
 from app.services.template_repository import TemplateRepository
@@ -292,7 +292,7 @@ async def back_to_main_menu(
     user_repository: InMemoryUserRepository,
     pricing_service: PricingService,
 ) -> None:
-    from app.handlers.start import show_main_menu
+    from app.start import show_main_menu
 
     await show_main_menu(
         target=callback,

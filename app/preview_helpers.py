@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from app.config import Settings
-from app.handlers.ui import build_preview_summary_text
+from app.ui import build_preview_summary_text
 from app.keyboards.preview import preview_kb
 from app.services.lottie_service import get_last_x_render_marker
 from app.services.preview_service import PreviewService

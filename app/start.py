@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.callbacks import MainMenuCallback
-from app.handlers.ui import build_main_menu_text
+from app.ui import build_main_menu_text
 from app.keyboards.categories import categories_kb
 from app.keyboards.main_menu import main_menu_kb
 from app.services.pricing_service import PricingService
