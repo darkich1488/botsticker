@@ -956,7 +956,13 @@ def _resolve_fixed_text_font_path(logger: logging.Logger) -> Path:
     candidates: list[Path] = []
     env_font_path = os.getenv("EMOJI_TEXT_FONT_PATH", "").strip()
     if env_font_path:
-        candidates.append(Path(env_font_path).expanduser())
+        env_candidate = Path(env_font_path).expanduser()
+        candidates.append(env_candidate)
+        if not env_candidate.exists():
+            logger.warning(
+                "EMOJI_TEXT_FONT_PATH does not exist path=%s",
+                str(env_candidate),
+            )
 
     project_root = Path(__file__).resolve().parents[2]
     for candidate in DEFAULT_TEXT_FONT_CANDIDATES:
