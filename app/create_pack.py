@@ -2,11 +2,12 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from time import perf_counter
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from app.callbacks import CategoryCallback, TemplateActionCallback, TemplatePageCallback, TemplateToggleCallback
 from app.config import Settings
@@ -20,6 +21,7 @@ from app.utils.safe_edit import safe_edit_message
 
 router = Router(name="create_pack")
 logger = logging.getLogger(__name__)
+_TEMPLATE_GUIDE_IMAGE_PATH = Path(__file__).resolve().parent / "assets" / "emoji_picker_guide.png"
 
 
 async def _safe_delete_message(message: Message) -> None:
@@ -52,6 +54,25 @@ async def _send_prompt(message: Message, state: FSMContext, text: str) -> None:
     await _delete_prompt_message(message, state)
     sent = await message.answer(text)
     await state.update_data(flow_prompt_message_id=sent.message_id)
+
+
+async def _send_template_guide_once(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    if bool(data.get("template_guide_sent")):
+        return
+
+    if not _TEMPLATE_GUIDE_IMAGE_PATH.is_file():
+        logger.warning("Template guide image not found path=%s", _TEMPLATE_GUIDE_IMAGE_PATH)
+        await state.update_data(template_guide_sent=True)
+        return
+
+    try:
+        await message.answer_photo(FSInputFile(str(_TEMPLATE_GUIDE_IMAGE_PATH)))
+        logger.info("Template guide image sent path=%s", _TEMPLATE_GUIDE_IMAGE_PATH)
+    except Exception:
+        logger.warning("Template guide image send failed path=%s", _TEMPLATE_GUIDE_IMAGE_PATH, exc_info=True)
+        return
+    await state.update_data(template_guide_sent=True)
 
 
 async def show_template_selection_screen(
@@ -113,6 +134,7 @@ async def show_template_selection_screen(
             )
         await target.answer()
     else:
+        await _send_template_guide_once(message=target, state=state)
         await target.answer(text, reply_markup=kb)
 
 
@@ -143,6 +165,7 @@ async def choose_category(
             preview_context_id=None,
             random_mode=False,
             awaiting_page_input=False,
+            template_guide_sent=False,
             flow_prompt_message_id=callback.message.message_id if callback.message else None,
         )
         await state.set_state(CreatePackState.waiting_text)
