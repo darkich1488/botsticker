@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -33,6 +34,10 @@ DEFAULT_TEXT_FONT_CANDIDATES = (
     "C:/Windows/Fonts/segoeui.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+    "/usr/local/share/fonts/NotoSans-Regular.ttf",
     "/Library/Fonts/Arial Unicode.ttf",
     "/Library/Fonts/Arial.ttf",
 )
@@ -960,6 +965,26 @@ def _resolve_fixed_text_font_path(logger: logging.Logger) -> Path:
             path_candidate = (project_root / path_candidate).resolve()
         candidates.append(path_candidate)
 
+    # Railway/base images can have fonts in non-standard paths; ask fontconfig when available.
+    try:
+        proc = subprocess.run(
+            ["fc-list", ":", "file"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2.0,
+        )
+        if proc.returncode == 0 and proc.stdout:
+            for raw_line in proc.stdout.splitlines():
+                path_part = raw_line.split(":", 1)[0].strip()
+                if not path_part:
+                    continue
+                lowered = path_part.lower()
+                if lowered.endswith((".ttf", ".otf", ".ttc")):
+                    candidates.append(Path(path_part))
+    except Exception:
+        pass
+
     seen: set[str] = set()
     for candidate in candidates:
         key = str(candidate).lower()
@@ -970,6 +995,11 @@ def _resolve_fixed_text_font_path(logger: logging.Logger) -> Path:
             logger.info("Text shape font selected path=%s", str(candidate))
             return candidate
 
+    logger.error(
+        "Text shape font selection failed checked_candidates=%s env_font_path_set=%s",
+        len(seen),
+        bool(env_font_path),
+    )
     raise FileNotFoundError(
         "No suitable fixed font found for shape-text pipeline. "
         "Set EMOJI_TEXT_FONT_PATH or provide one of DEFAULT_TEXT_FONT_CANDIDATES."
