@@ -72,8 +72,8 @@ _EMOJI9_TEMPLATE_FILE = "emoji9.json"
 _EMOJI9_VISUAL_X_NUDGE_PX = -20.0
 _EMOJI9_TEXT_SIZE_DELTA_PX = 6.0
 _EMOJI10_TEMPLATE_FILE = "emoji10.json"
-_EMOJI10_VISUAL_X_NUDGE_PX = 20.0
-_EMOJI10_TEXT_SIZE_MULTIPLIER = 2.0
+_EMOJI10_VISUAL_X_NUDGE_PX = 60.0
+_EMOJI10_FIXED_FONT_SIZE = 10.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -3453,7 +3453,7 @@ def replace_text_in_lottie(
             if template_name_value.lower() == _EMOJI10_TEMPLATE_FILE:
                 emoji10_old_size = _as_float(style.get("s"))
                 if emoji10_old_size is not None:
-                    style["s"] = round(max(10.0, emoji10_old_size * _EMOJI10_TEXT_SIZE_MULTIPLIER), 6)
+                    style["s"] = round(_EMOJI10_FIXED_FONT_SIZE, 6)
                     active_logger.info(
                         "Template font size tweak template_name=%s old_size=%s final_font_size=%s",
                         template_name_value or None,
