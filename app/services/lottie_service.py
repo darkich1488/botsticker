@@ -83,19 +83,19 @@ _EMOJI10_TEXT_SIZE_DELTA_PX = 25.0
 _EMOJI10_LONG_TEXT_SHRINK_BASE_PX = 6.0
 _EMOJI10_LONG_TEXT_SHRINK_STEP_PX = 3.0
 _EMOJI11_TEMPLATE_FILE = "emoji11.json"
-_EMOJI11_VISUAL_X_NUDGE_PX = -160.0
+_EMOJI11_VISUAL_X_NUDGE_PX = -190.0
 _EMOJI11_VISUAL_Y_NUDGE_PX = -8.0
 _EMOJI13_TEMPLATE_FILE = "emoji13.json"
-_EMOJI13_FIXED_FONT_SIZE = 70.0
+_EMOJI13_FIXED_FONT_SIZE = 40.0
 _EMOJI13_VISUAL_X_NUDGE_PX = 40.0
 _EMOJI14_TEMPLATE_FILE = "emoji14.json"
 _EMOJI14_FIXED_FONT_SIZE = 14.1
 _EMOJI15_TEMPLATE_FILE = "emoji15.json"
-_EMOJI15_FIXED_FONT_SIZE = 72.0
+_EMOJI15_FIXED_FONT_SIZE = 56.0
 _EMOJI15_VISUAL_X_NUDGE_PX = -20.0
 _EMOJI16_TEMPLATE_FILE = "emoji16.json"
-_EMOJI16_FIXED_FONT_SIZE = 120.0
-_EMOJI16_VISUAL_X_NUDGE_PX = 20.0
+_EMOJI16_FIXED_FONT_SIZE = 150.0
+_EMOJI16_VISUAL_X_NUDGE_PX = -20.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -2000,6 +2000,7 @@ def inject_text_shapes(
         is_motion_preserving_comp_correction_template = template_name_lc in {
             _EMOJI3_TEMPLATE_FILE,
             _EMOJI8_TEMPLATE_FILE,
+            _EMOJI14_TEMPLATE_FILE,
         }
         corrected_tr_p_x: float | None = None
         corrected_tr_p_y: float | None = None
@@ -4504,6 +4505,15 @@ class LottieService:
                         asset_layers = asset.get("layers")
                         if not isinstance(asset_layers, list):
                             continue
+                        if template_name_norm == _EMOJI14_TEMPLATE_FILE:
+                            if _as_float(asset.get("w")) is None:
+                                root_w = _as_float(payload.get("w"))
+                                if root_w is not None:
+                                    asset["w"] = root_w
+                            if _as_float(asset.get("h")) is None:
+                                root_h = _as_float(payload.get("h"))
+                                if root_h is not None:
+                                    asset["h"] = root_h
                         if template_name_norm == _EMOJI14_TEMPLATE_FILE:
                             target_layers_in_asset = [
                                 layer
