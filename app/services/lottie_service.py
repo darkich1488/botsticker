@@ -95,7 +95,7 @@ _EMOJI15_FIXED_FONT_SIZE = 56.0
 _EMOJI15_VISUAL_X_NUDGE_PX = -40.0
 _EMOJI16_TEMPLATE_FILE = "emoji16.json"
 _EMOJI16_FIXED_FONT_SIZE = 150.0
-_EMOJI16_VISUAL_X_NUDGE_PX = 40.0
+_EMOJI16_VISUAL_X_NUDGE_PX = 10.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -2516,11 +2516,28 @@ def inject_text_shapes(
                         final_index,
                     )
         elif template_name_value.lower() == _EMOJI15_TEMPLATE_FILE:
-            if GENERATED_LAYER_RENDER_ORDER == "first_to_last":
-                desired_final_index = 0
+            overlay_anchor_index: int | None = None
+            fallback_anchor_index: int | None = None
+            for candidate_index, candidate_layer in enumerate(layers):
+                if candidate_index == final_index or not isinstance(candidate_layer, dict):
+                    continue
+                candidate_name = str(candidate_layer.get("nm", "")).strip()
+                candidate_ind = candidate_layer.get("ind")
+                if candidate_ind == 46:
+                    overlay_anchor_index = candidate_index
+                    break
+                if _normalize_name(candidate_name) == "слой фигура 2":
+                    fallback_anchor_index = candidate_index
+            if overlay_anchor_index is None:
+                overlay_anchor_index = fallback_anchor_index
+            if overlay_anchor_index is not None:
+                if GENERATED_LAYER_RENDER_ORDER == "first_to_last":
+                    desired_final_index = overlay_anchor_index + 1
+                else:
+                    desired_final_index = overlay_anchor_index
+                desired_final_index = max(0, min(len(layers) - 1, desired_final_index))
             else:
-                desired_final_index = len(layers) - 1
-            desired_final_index = max(0, min(len(layers) - 1, desired_final_index))
+                desired_final_index = len(layers) - 1 if GENERATED_LAYER_RENDER_ORDER != "first_to_last" else 0
             if desired_final_index != final_index:
                 moved_layer = layers.pop(final_index)
                 if desired_final_index > final_index:
@@ -2530,9 +2547,10 @@ def inject_text_shapes(
                 final_index = desired_final_index
                 final_generated_layer = moved_layer
             active_logger.info(
-                "Emoji15 stacking override template_name=%s final_generated_index=%s reason=push_text_under_most_layers",
+                "Emoji15 stacking override template_name=%s final_generated_index=%s overlay_anchor_index=%s reason=under_most_layers_but_above_layer_46",
                 template_name_value or None,
                 final_index,
+                overlay_anchor_index,
             )
 
         overlay_last_to_first = _overlay_counts(layers, range(0, final_index))
