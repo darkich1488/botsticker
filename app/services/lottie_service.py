@@ -92,10 +92,10 @@ _EMOJI14_TEMPLATE_FILE = "emoji14.json"
 _EMOJI14_FIXED_FONT_SIZE = 14.1
 _EMOJI15_TEMPLATE_FILE = "emoji15.json"
 _EMOJI15_FIXED_FONT_SIZE = 56.0
-_EMOJI15_VISUAL_X_NUDGE_PX = -20.0
+_EMOJI15_VISUAL_X_NUDGE_PX = -40.0
 _EMOJI16_TEMPLATE_FILE = "emoji16.json"
 _EMOJI16_FIXED_FONT_SIZE = 150.0
-_EMOJI16_VISUAL_X_NUDGE_PX = -20.0
+_EMOJI16_VISUAL_X_NUDGE_PX = 40.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -2515,6 +2515,25 @@ def inject_text_shapes(
                         overlay_anchor_index,
                         final_index,
                     )
+        elif template_name_value.lower() == _EMOJI15_TEMPLATE_FILE:
+            if GENERATED_LAYER_RENDER_ORDER == "first_to_last":
+                desired_final_index = 0
+            else:
+                desired_final_index = len(layers) - 1
+            desired_final_index = max(0, min(len(layers) - 1, desired_final_index))
+            if desired_final_index != final_index:
+                moved_layer = layers.pop(final_index)
+                if desired_final_index > final_index:
+                    desired_final_index -= 1
+                layers.insert(desired_final_index, moved_layer)
+                moved_after_conversion = True
+                final_index = desired_final_index
+                final_generated_layer = moved_layer
+            active_logger.info(
+                "Emoji15 stacking override template_name=%s final_generated_index=%s reason=push_text_under_most_layers",
+                template_name_value or None,
+                final_index,
+            )
 
         overlay_last_to_first = _overlay_counts(layers, range(0, final_index))
         overlay_first_to_last = _overlay_counts(layers, range(final_index + 1, len(layers)))
