@@ -4041,10 +4041,20 @@ def build_tgs_bytes(data: dict[str, Any], logger: logging.Logger | None = None) 
         glyph_bank_exists_before_build,
     )
     marker_token = str(data.get(_X_MARKER_TOKEN_KEY) or "")
-    json_payload = data
-    if marker_token:
-        json_payload = dict(data)
-        json_payload.pop(_X_MARKER_TOKEN_KEY, None)
+
+    def _remove_marker_token_recursive(node: Any) -> Any:
+        if isinstance(node, dict):
+            cleaned: dict[str, Any] = {}
+            for key, value in node.items():
+                if key == _X_MARKER_TOKEN_KEY:
+                    continue
+                cleaned[key] = _remove_marker_token_recursive(value)
+            return cleaned
+        if isinstance(node, list):
+            return [_remove_marker_token_recursive(item) for item in node]
+        return node
+
+    json_payload = _remove_marker_token_recursive(data)
     compact_json, compressed = _encode_tgs_payload(json_payload)
     selected_strategy = "original"
     if len(compressed) > TELEGRAM_TGS_MAX_BYTES:
@@ -4509,11 +4519,11 @@ class LottieService:
                             if _as_float(asset.get("w")) is None:
                                 root_w = _as_float(payload.get("w"))
                                 if root_w is not None:
-                                    asset["w"] = root_w
+                                    asset["w"] = int(round(root_w))
                             if _as_float(asset.get("h")) is None:
                                 root_h = _as_float(payload.get("h"))
                                 if root_h is not None:
-                                    asset["h"] = root_h
+                                    asset["h"] = int(round(root_h))
                         if template_name_norm == _EMOJI14_TEMPLATE_FILE:
                             target_layers_in_asset = [
                                 layer
