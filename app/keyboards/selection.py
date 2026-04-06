@@ -75,6 +75,7 @@ def template_selection_kb(
     supports_recolor: bool,
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
+    has_selected = len(selected_template_ids) > 0
 
     template_buttons: list[InlineKeyboardButton] = []
     for template in templates:
@@ -127,18 +128,19 @@ def template_selection_kb(
             callback_data=TemplateActionCallback(action="select_all").pack(),
         )
     )
-    kb.row(
-        InlineKeyboardButton(
-            text="🧹 Скинуть выбор",
-            callback_data=TemplateActionCallback(action="clear_selected").pack(),
+    if has_selected:
+        kb.row(
+            InlineKeyboardButton(
+                text="🧹 Скинуть выбор",
+                callback_data=TemplateActionCallback(action="clear_selected").pack(),
+            )
         )
-    )
-    kb.row(
-        InlineKeyboardButton(
-            text="💳 Перейти к оплате",
-            callback_data=TemplateActionCallback(action="to_payment").pack(),
+        kb.row(
+            InlineKeyboardButton(
+                text="💳 Перейти к оплате",
+                callback_data=TemplateActionCallback(action="to_payment").pack(),
+            )
         )
-    )
     kb.row(
         InlineKeyboardButton(
             text="↩️ Назад",
