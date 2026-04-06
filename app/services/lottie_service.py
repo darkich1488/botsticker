@@ -26,6 +26,11 @@ GENERATED_LAYER_RENDER_ORDER = os.getenv("EMOJI_RENDER_ORDER", "last_to_first").
 DEBUG_HIDE_OVERLAY_LAYERS = os.getenv("EMOJI_DEBUG_HIDE_OVERLAY_LAYERS", "0").strip() not in {"0", "false", "False"}
 X_PLACEMENT_MODE = "local_paragraph_delta_relative_to_preserved_ks"
 DEFAULT_TEXT_FONT_CANDIDATES = (
+    "app/assets/fonts/Impact.ttf",
+    "app/fonts/Impact.ttf",
+    "C:/Windows/Fonts/impact.ttf",
+    "/usr/share/fonts/truetype/msttcorefonts/Impact.ttf",
+    "/usr/share/fonts/truetype/msttcorefonts/impact.ttf",
     "app/assets/fonts/NotoSans-Regular.ttf",
     "app/assets/fonts/DejaVuSans.ttf",
     "app/fonts/NotoSans-Regular.ttf",
@@ -77,6 +82,19 @@ _EMOJI10_TEXT_SIZE_MULTIPLIER = 3.0
 _EMOJI10_TEXT_SIZE_DELTA_PX = 25.0
 _EMOJI10_LONG_TEXT_SHRINK_BASE_PX = 6.0
 _EMOJI10_LONG_TEXT_SHRINK_STEP_PX = 3.0
+_EMOJI11_TEMPLATE_FILE = "emoji11.json"
+_EMOJI11_VISUAL_X_NUDGE_PX = -120.0
+_EMOJI11_VISUAL_Y_NUDGE_PX = -8.0
+_EMOJI13_TEMPLATE_FILE = "emoji13.json"
+_EMOJI13_FIXED_FONT_SIZE = 80.0
+_EMOJI13_VISUAL_X_NUDGE_PX = 40.0
+_EMOJI14_TEMPLATE_FILE = "emoji14.json"
+_EMOJI14_FIXED_FONT_SIZE = 14.1
+_EMOJI15_TEMPLATE_FILE = "emoji15.json"
+_EMOJI15_VISUAL_X_NUDGE_PX = -100.0
+_EMOJI16_TEMPLATE_FILE = "emoji16.json"
+_EMOJI16_FIXED_FONT_SIZE = 104.0
+_EMOJI16_VISUAL_X_NUDGE_PX = 60.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -2151,6 +2169,14 @@ def inject_text_shapes(
             desired_visual_x_nudge_px = _EMOJI9_VISUAL_X_NUDGE_PX
         elif template_name_lc == _EMOJI10_TEMPLATE_FILE:
             desired_visual_x_nudge_px = _EMOJI10_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI11_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI11_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI13_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI13_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI15_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI15_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI16_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI16_VISUAL_X_NUDGE_PX
         if abs(desired_visual_x_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list) and tr_k:
@@ -2196,6 +2222,8 @@ def inject_text_shapes(
             desired_visual_y_nudge_px = _EMOJI6_VISUAL_Y_NUDGE_PX
         elif template_name_lc == _EMOJI8_TEMPLATE_FILE:
             desired_visual_y_nudge_px = _EMOJI8_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI11_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI11_VISUAL_Y_NUDGE_PX
         if abs(desired_visual_y_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list):
@@ -3210,6 +3238,12 @@ def replace_text_in_lottie(
     fixed_font_size_for_template: float | None = None
     if template_name_value.lower() == _EMOJI6_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI6_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI13_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI13_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI14_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI14_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI16_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI16_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI8_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI8_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI8_NESTED_TEXT_TEMPLATE_FILE:
@@ -4452,7 +4486,11 @@ class LottieService:
                 logger=self._logger,
             )
             template_name_norm = (template_name or "").strip().lower()
-            if template_name_norm in {_EMOJI8_NESTED_TEXT_TEMPLATE_FILE, _EMOJI10_TEMPLATE_FILE}:
+            if template_name_norm in {
+                _EMOJI8_NESTED_TEXT_TEMPLATE_FILE,
+                _EMOJI10_TEMPLATE_FILE,
+                _EMOJI14_TEMPLATE_FILE,
+            }:
                 nested_text_layers_found = 0
                 nested_text_layers_converted = 0
                 assets = payload.get("assets")
