@@ -120,7 +120,7 @@ def load_settings() -> Settings:
         preview_max_frames=_int_env("PREVIEW_MAX_FRAMES", 48),
         preview_max_gif_bytes=_int_env("PREVIEW_MAX_GIF_BYTES", 3_500_000),
         random_pack_size=_int_env("RANDOM_PACK_SIZE", 6),
-        templates_per_page=12,
+        templates_per_page=_int_env("TEMPLATES_PER_PAGE", 50),
         lottie_renderer_cmd=renderer_cmd or None,
         admin_user_ids=_int_tuple_env("ADMIN_USER_IDS", (925896498, 8619205109)),
         categories=categories,

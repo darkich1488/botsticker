@@ -358,6 +358,33 @@ async def select_all_templates(
         )
 
 
+@router.callback_query(CreatePackState.choosing_templates, TemplateActionCallback.filter(F.action == "clear_selected"))
+async def clear_selected_templates(
+    callback: CallbackQuery,
+    state: FSMContext,
+    template_repository: TemplateRepository,
+    pricing_service: PricingService,
+    settings: Settings,
+) -> None:
+    t0 = perf_counter()
+    try:
+        await state.update_data(selected_template_ids=[])
+        await show_template_selection_screen(
+            target=callback,
+            state=state,
+            template_repository=template_repository,
+            pricing_service=pricing_service,
+            settings=settings,
+        )
+    finally:
+        logger.info(
+            "Callback timing handler_name=clear_selected_templates callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
+
+
 @router.callback_query(CreatePackState.choosing_templates, TemplateActionCallback.filter(F.action == "page_pick"))
 async def page_pick_prompt(callback: CallbackQuery, state: FSMContext) -> None:
     t0 = perf_counter()

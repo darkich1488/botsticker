@@ -1,6 +1,6 @@
 ﻿from collections.abc import Sequence
 
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.callbacks import PickModeCallback, TemplateActionCallback, TemplatePageCallback, TemplateToggleCallback
@@ -17,6 +17,10 @@ _BASIC_TEMPLATE_ICONS: dict[int, str] = {
     8: "🧎",
     9: "🎭",
     10: "🎰",
+    11: "😈",
+    12: "📚",
+    13: "💀",
+    14: "🐸",
 }
 
 _BASIC_TEMPLATE_CUSTOM_EMOJI_IDS: dict[int, str] = {
@@ -72,6 +76,7 @@ def template_selection_kb(
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
 
+    template_buttons: list[InlineKeyboardButton] = []
     for template in templates:
         is_selected = template.id in selected_template_ids
         button_text = _template_button_text(template, is_selected)
@@ -83,41 +88,61 @@ def template_selection_kb(
             custom_emoji_id = _BASIC_TEMPLATE_CUSTOM_EMOJI_IDS.get(template.order_index)
             if custom_emoji_id:
                 button_payload["icon_custom_emoji_id"] = custom_emoji_id
-        kb.button(**button_payload)
-    kb.adjust(4)
+        template_buttons.append(InlineKeyboardButton(**button_payload))
 
-    kb.button(
-        text="⬅️",
-        callback_data=TemplatePageCallback(page=max(1, current_page - 1)).pack(),
-    )
-    kb.button(
-        text=f"{current_page}/{total_pages}",
-        callback_data=TemplateActionCallback(action="noop").pack(),
-    )
-    kb.button(
-        text="➡️",
-        callback_data=TemplatePageCallback(page=min(total_pages, current_page + 1)).pack(),
-    )
+    for idx in range(0, len(template_buttons), 4):
+        kb.row(*template_buttons[idx : idx + 4])
 
-    kb.button(
-        text="🔢 Выбрать номер страницы",
-        callback_data=TemplateActionCallback(action="page_pick").pack(),
+    if total_pages > 1:
+        kb.row(
+            InlineKeyboardButton(
+                text="⬅️",
+                callback_data=TemplatePageCallback(page=max(1, current_page - 1)).pack(),
+            ),
+            InlineKeyboardButton(
+                text=f"{current_page}/{total_pages}",
+                callback_data=TemplateActionCallback(action="noop").pack(),
+            ),
+            InlineKeyboardButton(
+                text="➡️",
+                callback_data=TemplatePageCallback(page=min(total_pages, current_page + 1)).pack(),
+            ),
+        )
+        kb.row(
+            InlineKeyboardButton(
+                text="🔢 Выбрать номер страницы",
+                callback_data=TemplateActionCallback(action="page_pick").pack(),
+            )
+        )
+
+    kb.row(
+        InlineKeyboardButton(
+            text="🎲 Случайный выбор",
+            callback_data=TemplateActionCallback(action="random_here").pack(),
+        )
     )
-    kb.button(
-        text="🎲 Случайный выбор",
-        callback_data=TemplateActionCallback(action="random_here").pack(),
+    kb.row(
+        InlineKeyboardButton(
+            text="✅ Выбрать все",
+            callback_data=TemplateActionCallback(action="select_all").pack(),
+        )
     )
-    kb.button(
-        text="✅ Выбрать все",
-        callback_data=TemplateActionCallback(action="select_all").pack(),
+    kb.row(
+        InlineKeyboardButton(
+            text="🧹 Скинуть выбор",
+            callback_data=TemplateActionCallback(action="clear_selected").pack(),
+        )
     )
-    kb.button(
-        text="💳 Перейти к оплате",
-        callback_data=TemplateActionCallback(action="to_payment").pack(),
+    kb.row(
+        InlineKeyboardButton(
+            text="💳 Перейти к оплате",
+            callback_data=TemplateActionCallback(action="to_payment").pack(),
+        )
     )
-    kb.button(
-        text="↩️ Назад",
-        callback_data=TemplateActionCallback(action="back_mode").pack(),
+    kb.row(
+        InlineKeyboardButton(
+            text="↩️ Назад",
+            callback_data=TemplateActionCallback(action="back_mode").pack(),
+        )
     )
-    kb.adjust(4, 3, 1, 1, 1, 1, 1)
     return kb.as_markup()
