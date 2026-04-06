@@ -6,6 +6,27 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.callbacks import PickModeCallback, TemplateActionCallback, TemplatePageCallback, TemplateToggleCallback
 from app.models.template import TemplateModel
 
+_BASIC_TEMPLATE_ICONS: dict[int, str] = {
+    1: "📱",
+    2: "🎯",
+    3: "🌼",
+    4: "🤝",
+    5: "⛓️",
+    6: "⌚",
+    7: "🤠",
+    8: "🧎",
+    9: "🎭",
+    10: "🎰",
+}
+
+
+def _template_button_text(template: TemplateModel, selected: bool) -> str:
+    icon = "🧩"
+    if template.category_id == "basic":
+        icon = _BASIC_TEMPLATE_ICONS.get(template.order_index, icon)
+    selected_mark = "✅" if selected else ""
+    return f"{icon} {template.order_index}{selected_mark}"
+
 
 def pick_mode_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
@@ -35,9 +56,8 @@ def template_selection_kb(
     kb = InlineKeyboardBuilder()
 
     for template in templates:
-        selected = "✅" if template.id in selected_template_ids else ""
         kb.button(
-            text=f"{template.order_index}{selected}",
+            text=_template_button_text(template, template.id in selected_template_ids),
             callback_data=TemplateToggleCallback(template_id=template.id).pack(),
         )
     kb.adjust(4)
