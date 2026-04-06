@@ -83,18 +83,19 @@ _EMOJI10_TEXT_SIZE_DELTA_PX = 25.0
 _EMOJI10_LONG_TEXT_SHRINK_BASE_PX = 6.0
 _EMOJI10_LONG_TEXT_SHRINK_STEP_PX = 3.0
 _EMOJI11_TEMPLATE_FILE = "emoji11.json"
-_EMOJI11_VISUAL_X_NUDGE_PX = -120.0
+_EMOJI11_VISUAL_X_NUDGE_PX = -160.0
 _EMOJI11_VISUAL_Y_NUDGE_PX = -8.0
 _EMOJI13_TEMPLATE_FILE = "emoji13.json"
-_EMOJI13_FIXED_FONT_SIZE = 80.0
+_EMOJI13_FIXED_FONT_SIZE = 70.0
 _EMOJI13_VISUAL_X_NUDGE_PX = 40.0
 _EMOJI14_TEMPLATE_FILE = "emoji14.json"
 _EMOJI14_FIXED_FONT_SIZE = 14.1
 _EMOJI15_TEMPLATE_FILE = "emoji15.json"
-_EMOJI15_VISUAL_X_NUDGE_PX = -100.0
+_EMOJI15_FIXED_FONT_SIZE = 72.0
+_EMOJI15_VISUAL_X_NUDGE_PX = -20.0
 _EMOJI16_TEMPLATE_FILE = "emoji16.json"
-_EMOJI16_FIXED_FONT_SIZE = 104.0
-_EMOJI16_VISUAL_X_NUDGE_PX = 60.0
+_EMOJI16_FIXED_FONT_SIZE = 120.0
+_EMOJI16_VISUAL_X_NUDGE_PX = 20.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -3242,6 +3243,8 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI13_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI14_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI14_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI15_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI15_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI16_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI16_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI8_TEMPLATE_FILE:
@@ -4501,14 +4504,23 @@ class LottieService:
                         asset_layers = asset.get("layers")
                         if not isinstance(asset_layers, list):
                             continue
-                        target_layers_in_asset = [
-                            layer
-                            for layer in asset_layers
-                            if isinstance(layer, dict)
-                            and layer.get("ty") == 5
-                            and not _is_glyph_bank_layer(str(layer.get("nm", "")).strip())
-                            and _normalize_name(str(layer.get("nm", "")).strip()) == _normalize_name(TARGET_TEXT_LAYER_NAME)
-                        ]
+                        if template_name_norm == _EMOJI14_TEMPLATE_FILE:
+                            target_layers_in_asset = [
+                                layer
+                                for layer in asset_layers
+                                if isinstance(layer, dict)
+                                and layer.get("ty") == 5
+                                and not _is_glyph_bank_layer(str(layer.get("nm", "")).strip())
+                            ]
+                        else:
+                            target_layers_in_asset = [
+                                layer
+                                for layer in asset_layers
+                                if isinstance(layer, dict)
+                                and layer.get("ty") == 5
+                                and not _is_glyph_bank_layer(str(layer.get("nm", "")).strip())
+                                and _normalize_name(str(layer.get("nm", "")).strip()) == _normalize_name(TARGET_TEXT_LAYER_NAME)
+                            ]
                         if target_layers_in_asset:
                             nested_text_layers_found += len(target_layers_in_asset)
                             nested_text_layers_converted += inject_text_shapes(
