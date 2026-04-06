@@ -19,6 +19,23 @@ _BASIC_TEMPLATE_ICONS: dict[int, str] = {
     10: "🎰",
 }
 
+_BASIC_TEMPLATE_CUSTOM_EMOJI_IDS: dict[int, str] = {
+    1: "5377853161207798110",
+    2: "5375301637101362035",
+    3: "5377713561885777676",
+    4: "5377491937278335228",
+    5: "5377463208242092370",
+    6: "5375122919217208828",
+    7: "5375378748944193571",
+    8: "5377679674593811653",
+    9: "5377671389601895642",
+    10: "5377407648545149088",
+    11: "5377680043960997502",
+    12: "5377460944794326403",
+    13: "5377846710166918564",
+    14: "5377651830320832768",
+}
+
 
 def _template_button_text(template: TemplateModel, selected: bool) -> str:
     icon = "🧩"
@@ -56,10 +73,17 @@ def template_selection_kb(
     kb = InlineKeyboardBuilder()
 
     for template in templates:
-        kb.button(
-            text=_template_button_text(template, template.id in selected_template_ids),
-            callback_data=TemplateToggleCallback(template_id=template.id).pack(),
-        )
+        is_selected = template.id in selected_template_ids
+        button_text = _template_button_text(template, is_selected)
+        button_payload: dict[str, str] = {
+            "text": button_text,
+            "callback_data": TemplateToggleCallback(template_id=template.id).pack(),
+        }
+        if template.category_id == "basic":
+            custom_emoji_id = _BASIC_TEMPLATE_CUSTOM_EMOJI_IDS.get(template.order_index)
+            if custom_emoji_id:
+                button_payload["icon_custom_emoji_id"] = custom_emoji_id
+        kb.button(**button_payload)
     kb.adjust(4)
 
     kb.button(
