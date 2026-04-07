@@ -100,19 +100,20 @@ _EMOJI17_TEMPLATE_FILE = "emoji17.json"
 _EMOJI17_FIXED_FONT_SIZE = 30.0
 _EMOJI17_VISUAL_Y_NUDGE_PX = -20.0
 _EMOJI18_TEMPLATE_FILE = "emoji18.json"
-_EMOJI18_FIXED_FONT_SIZE = 250.0
+_EMOJI18_FIXED_FONT_SIZE = 950.0
 _EMOJI18_VISUAL_X_NUDGE_PX = 120.0
 _EMOJI19_TEMPLATE_FILE = "emoji19.json"
 _EMOJI19_VISUAL_X_NUDGE_PX = 40.0
 _EMOJI20_TEMPLATE_FILE = "emoji20.json"
 _EMOJI20_FIXED_FONT_SIZE = 44.0
-_EMOJI20_VISUAL_X_NUDGE_PX = -20.0
+_EMOJI20_VISUAL_X_NUDGE_PX = -60.0
 _EMOJI21_TEMPLATE_FILE = "emoji21.json"
-_EMOJI21_VISUAL_X_NUDGE_PX = 120.0
+_EMOJI21_FIXED_FONT_SIZE = 66.4
+_EMOJI21_VISUAL_X_NUDGE_PX = 80.0
 _EMOJI22_TEMPLATE_FILE = "emoji22.json"
 _EMOJI22_VISUAL_X_NUDGE_PX = -60.0
 _EMOJI24_TEMPLATE_FILE = "emoji24.json"
-_EMOJI24_VISUAL_X_NUDGE_PX = -60.0
+_EMOJI24_VISUAL_X_NUDGE_PX = -120.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -3326,6 +3327,8 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI18_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI20_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI20_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI21_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI21_FIXED_FONT_SIZE
     target_names = {name.lower() for name in (target_layer_names or set())}
     comp_width = _as_float(data.get("w"))
     comp_height = _as_float(data.get("h"))
