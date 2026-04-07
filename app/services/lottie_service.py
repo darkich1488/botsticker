@@ -101,7 +101,7 @@ _EMOJI17_FIXED_FONT_SIZE = 30.0
 _EMOJI17_VISUAL_Y_NUDGE_PX = -20.0
 _EMOJI18_TEMPLATE_FILE = "emoji18.json"
 _EMOJI18_FIXED_FONT_SIZE = 950.0
-_EMOJI18_VISUAL_X_NUDGE_PX = 120.0
+_EMOJI18_VISUAL_X_NUDGE_PX = 200.0
 _EMOJI19_TEMPLATE_FILE = "emoji19.json"
 _EMOJI19_VISUAL_X_NUDGE_PX = 40.0
 _EMOJI20_TEMPLATE_FILE = "emoji20.json"
@@ -1451,6 +1451,7 @@ def inject_text_shapes(
     template_name_value = (template_name or str(data.get("__template_name__", ""))).strip()
     is_emoji4_template = template_name_value.lower() == _EMOJI4_TEMPLATE_FILE
     is_emoji10_template = template_name_value.lower() == _EMOJI10_TEMPLATE_FILE
+    is_emoji18_template = template_name_value.lower() == _EMOJI18_TEMPLATE_FILE
 
     layers_by_ind: dict[int, dict[str, Any]] = {}
     for candidate in layers:
@@ -1596,7 +1597,7 @@ def inject_text_shapes(
             box_center_y=0.0,
             box_max_width=box_max_width,
             box_max_height=box_max_height,
-            disable_fit_down=(is_emoji4_template or is_emoji10_template),
+            disable_fit_down=(is_emoji4_template or is_emoji10_template or is_emoji18_template),
             logger=active_logger,
         )
         active_logger.info(
