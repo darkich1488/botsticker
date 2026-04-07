@@ -111,7 +111,8 @@ _EMOJI21_TEMPLATE_FILE = "emoji21.json"
 _EMOJI21_FIXED_FONT_SIZE = 46.4
 _EMOJI21_VISUAL_X_NUDGE_PX = 160.0
 _EMOJI22_TEMPLATE_FILE = "emoji22.json"
-_EMOJI22_VISUAL_X_NUDGE_PX = -120.0
+_EMOJI22_FIXED_FONT_SIZE = 41.88
+_EMOJI22_VISUAL_X_NUDGE_PX = -100.0
 _EMOJI24_TEMPLATE_FILE = "emoji24.json"
 _EMOJI24_VISUAL_X_NUDGE_PX = -120.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
@@ -3330,6 +3331,8 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI20_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI21_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI21_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI22_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI22_FIXED_FONT_SIZE
     target_names = {name.lower() for name in (target_layer_names or set())}
     comp_width = _as_float(data.get("w"))
     comp_height = _as_float(data.get("h"))

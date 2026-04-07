@@ -23,6 +23,14 @@ _BASIC_TEMPLATE_ICONS: dict[int, str] = {
     14: "🐸",
     15: "⌚",
     16: "✈️",
+    17: "🧴",
+    18: "🎳",
+    19: "🔫",
+    20: "⚽",
+    21: "🪧",
+    22: "💻",
+    23: "❤️",
+    24: "🦆",
 }
 
 _BASIC_TEMPLATE_CUSTOM_EMOJI_IDS: dict[int, str] = {
