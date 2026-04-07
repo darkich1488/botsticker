@@ -217,6 +217,7 @@ class TelegramPackProvider(PackProvider):
             if not created:
                 raise PackCreationError("createNewStickerSet returned False")
 
+            added_items_count = 1
             for filename, payload in emoji_files[1:]:
                 self._log_payload_debug(
                     stage="add_sticker_to_set",
@@ -226,11 +227,22 @@ class TelegramPackProvider(PackProvider):
                     payload=payload,
                 )
                 sticker = self._input_sticker(filename, payload, emoji_list)
-                added = await self._bot.add_sticker_to_set(
-                    user_id=user_id,
-                    name=set_name,
-                    sticker=sticker,
-                )
+                try:
+                    added = await self._bot.add_sticker_to_set(
+                        user_id=user_id,
+                        name=set_name,
+                        sticker=sticker,
+                    )
+                except TelegramBadRequest as exc:
+                    if "wrong file type" in str(exc).lower():
+                        self._logger.warning(
+                            "Sticker skipped user_id=%s set_name=%s file=%s reason=wrong_file_type",
+                            user_id,
+                            set_name,
+                            filename,
+                        )
+                        continue
+                    raise
                 self._logger.info(
                     "addStickerToSet result user_id=%s set_name=%s file=%s success=%s",
                     user_id,
@@ -240,6 +252,7 @@ class TelegramPackProvider(PackProvider):
                 )
                 if not added:
                     raise PackCreationError(f"addStickerToSet returned False for {filename}")
+                added_items_count += 1
         except (TelegramBadRequest, TelegramForbiddenError) as exc:
             self._logger.error(
                 "Telegram pack creation failed user_id=%s set_name=%s",
@@ -259,17 +272,19 @@ class TelegramPackProvider(PackProvider):
 
         addemoji_link = f"https://t.me/addemoji/{set_name}"
         self._logger.info(
-            "Pack create success user_id=%s set_name=%s final_link=%s",
+            "Pack create success user_id=%s set_name=%s final_link=%s items_added=%s items_requested=%s",
             user_id,
             set_name,
             addemoji_link,
+            added_items_count,
+            len(emoji_files),
         )
         return PackCreationResult(
             pack_id=set_name,
             pack_title=set_title,
             addemoji_link=addemoji_link,
             public_link=addemoji_link,
-            items_count=len(emoji_files),
+            items_count=added_items_count,
             metadata=metadata,
         )
 
