@@ -115,6 +115,10 @@ _EMOJI22_FIXED_FONT_SIZE = 41.88
 _EMOJI22_VISUAL_X_NUDGE_PX = -100.0
 _EMOJI24_TEMPLATE_FILE = "emoji24.json"
 _EMOJI24_VISUAL_X_NUDGE_PX = -120.0
+_EMOJI25_TEMPLATE_FILE = "emoji25.json"
+_EMOJI25_FIXED_FONT_SIZE = 160.0
+_EMOJI26_TEMPLATE_FILE = "emoji26.json"
+_EMOJI26_FIXED_FONT_SIZE = 76.4
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -3333,6 +3337,10 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI21_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI22_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI22_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI25_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI25_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI26_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI26_FIXED_FONT_SIZE
     target_names = {name.lower() for name in (target_layer_names or set())}
     comp_width = _as_float(data.get("w"))
     comp_height = _as_float(data.get("h"))
@@ -4587,6 +4595,7 @@ class LottieService:
                 _EMOJI14_TEMPLATE_FILE,
                 _EMOJI18_TEMPLATE_FILE,
                 _EMOJI24_TEMPLATE_FILE,
+                _EMOJI25_TEMPLATE_FILE,
             }:
                 nested_text_layers_found = 0
                 nested_text_layers_converted = 0
