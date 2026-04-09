@@ -116,9 +116,22 @@ _EMOJI22_VISUAL_X_NUDGE_PX = -100.0
 _EMOJI24_TEMPLATE_FILE = "emoji24.json"
 _EMOJI24_VISUAL_X_NUDGE_PX = -120.0
 _EMOJI25_TEMPLATE_FILE = "emoji25.json"
-_EMOJI25_FIXED_FONT_SIZE = 160.0
+_EMOJI25_FIXED_FONT_SIZE = 60.0
+_EMOJI25_VISUAL_X_NUDGE_PX = -110.0
 _EMOJI26_TEMPLATE_FILE = "emoji26.json"
-_EMOJI26_FIXED_FONT_SIZE = 76.4
+_EMOJI26_FIXED_FONT_SIZE = 56.4
+_EMOJI27_TEMPLATE_FILE = "emoji27.json"
+_EMOJI27_FIXED_FONT_SIZE = 196.4
+_EMOJI27_VISUAL_X_NUDGE_PX = 30.0
+_EMOJI27_VISUAL_Y_NUDGE_PX = -20.0
+_EMOJI28_TEMPLATE_FILE = "emoji28.json"
+_EMOJI28_VISUAL_Y_NUDGE_PX = -40.0
+_EMOJI30_TEMPLATE_FILE = "emoji30.json"
+_EMOJI30_FIXED_FONT_SIZE = 96.4
+_EMOJI30_VISUAL_X_NUDGE_PX = -30.0
+_EMOJI31_TEMPLATE_FILE = "emoji31.json"
+_EMOJI31_FIXED_FONT_SIZE = 136.4
+_EMOJI31_VISUAL_X_NUDGE_PX = 10.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -2203,6 +2216,8 @@ def inject_text_shapes(
             desired_visual_x_nudge_px = _EMOJI15_VISUAL_X_NUDGE_PX
         elif template_name_lc == _EMOJI16_TEMPLATE_FILE:
             desired_visual_x_nudge_px = _EMOJI16_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI27_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI27_VISUAL_X_NUDGE_PX
         elif template_name_lc == _EMOJI18_TEMPLATE_FILE:
             desired_visual_x_nudge_px = _EMOJI18_VISUAL_X_NUDGE_PX
         elif template_name_lc == _EMOJI19_TEMPLATE_FILE:
@@ -2215,6 +2230,12 @@ def inject_text_shapes(
             desired_visual_x_nudge_px = _EMOJI22_VISUAL_X_NUDGE_PX
         elif template_name_lc == _EMOJI24_TEMPLATE_FILE:
             desired_visual_x_nudge_px = _EMOJI24_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI25_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI25_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI30_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI30_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI31_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI31_VISUAL_X_NUDGE_PX
         if abs(desired_visual_x_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list) and tr_k:
@@ -2264,6 +2285,10 @@ def inject_text_shapes(
             desired_visual_y_nudge_px = _EMOJI11_VISUAL_Y_NUDGE_PX
         elif template_name_lc == _EMOJI17_TEMPLATE_FILE:
             desired_visual_y_nudge_px = _EMOJI17_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI27_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI27_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI28_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI28_VISUAL_Y_NUDGE_PX
         if abs(desired_visual_y_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list):
@@ -3331,6 +3356,8 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI17_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI18_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI18_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI27_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI27_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI20_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI20_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI21_TEMPLATE_FILE:
@@ -3341,6 +3368,10 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI25_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI26_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI26_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI30_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI30_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI31_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI31_FIXED_FONT_SIZE
     target_names = {name.lower() for name in (target_layer_names or set())}
     comp_width = _as_float(data.get("w"))
     comp_height = _as_float(data.get("h"))
@@ -4596,6 +4627,8 @@ class LottieService:
                 _EMOJI18_TEMPLATE_FILE,
                 _EMOJI24_TEMPLATE_FILE,
                 _EMOJI25_TEMPLATE_FILE,
+                _EMOJI27_TEMPLATE_FILE,
+                _EMOJI30_TEMPLATE_FILE,
             }:
                 nested_text_layers_found = 0
                 nested_text_layers_converted = 0
