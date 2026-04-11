@@ -10,10 +10,6 @@ def main_menu_kb(include_admin: bool = False) -> InlineKeyboardMarkup:
         text="🧩 Новый набор",
         callback_data=MainMenuCallback(action="new_pack").pack(),
     )
-    kb.button(
-        text="🎁 Промокод",
-        callback_data=MainMenuCallback(action="promo").pack(),
-    )
     if include_admin:
         kb.button(
             text="📣 Рассылка",

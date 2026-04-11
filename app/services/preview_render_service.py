@@ -141,6 +141,88 @@ class ExternalCommandLottieRenderAdapter(LottieRenderAdapter):
         return self._run(input_json_path, output_png_path)
 
 
+class RlottiePythonRenderAdapter(LottieRenderAdapter):
+    def __init__(self, fps: int) -> None:
+        self._fps = max(8, fps)
+        self._anim_class = None
+        try:
+            from rlottie_python import LottieAnimation  # type: ignore
+
+            self._anim_class = LottieAnimation
+        except Exception:
+            self._anim_class = None
+
+    @property
+    def available(self) -> bool:
+        return self._anim_class is not None
+
+    def _size_from_json(self, input_json_path: str) -> tuple[int, int]:
+        try:
+            with Path(input_json_path).open("r", encoding="utf-8-sig") as fp:
+                payload = json.load(fp)
+            if isinstance(payload, dict):
+                w = int(float(payload.get("w", 512)))
+                h = int(float(payload.get("h", 512)))
+                return max(64, min(1024, w)), max(64, min(1024, h))
+        except Exception:
+            pass
+        return 512, 512
+
+    def render_gif(self, input_json_path: str, output_gif_path: str) -> PreviewRenderResult:
+        # Keep GIF rendering on existing adapters; this adapter is used primarily for real PNG frame render.
+        return PreviewRenderResult(
+            success=False,
+            output_path=None,
+            frame_count=0,
+            width=0,
+            height=0,
+            error_message="rlottie PNG-only adapter",
+        )
+
+    def render_png(self, input_json_path: str, output_png_path: str) -> PreviewRenderResult:
+        if not self.available or self._anim_class is None:
+            return PreviewRenderResult(
+                success=False,
+                output_path=None,
+                frame_count=0,
+                width=0,
+                height=0,
+                error_message="rlottie_python is not available",
+            )
+        try:
+            width, height = self._size_from_json(input_json_path)
+            anim = self._anim_class.from_file(str(input_json_path))
+            output = Path(output_png_path)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            anim.save_frame(str(output), frame_num=0, width=width, height=height)
+            if not output.exists():
+                return PreviewRenderResult(
+                    success=False,
+                    output_path=None,
+                    frame_count=0,
+                    width=0,
+                    height=0,
+                    error_message="rlottie did not produce output PNG",
+                )
+            return PreviewRenderResult(
+                success=True,
+                output_path=str(output.resolve()),
+                frame_count=1,
+                width=width,
+                height=height,
+                error_message=None,
+            )
+        except Exception as exc:
+            return PreviewRenderResult(
+                success=False,
+                output_path=None,
+                frame_count=0,
+                width=0,
+                height=0,
+                error_message=f"rlottie render error: {exc}",
+            )
+
+
 class PillowLottieRenderAdapter(LottieRenderAdapter):
     def __init__(self, fps: int, max_frames: int) -> None:
         self._fps = max(8, fps)
@@ -412,6 +494,9 @@ class PreviewRenderService:
         self._settings = settings
         self._logger = logging.getLogger(self.__class__.__name__)
         self._adapters: list[LottieRenderAdapter] = []
+        rlottie_adapter = RlottiePythonRenderAdapter(fps=settings.preview_fps)
+        if rlottie_adapter.available:
+            self._adapters.append(rlottie_adapter)
         if settings.lottie_renderer_cmd:
             self._adapters.append(
                 ExternalCommandLottieRenderAdapter(
@@ -634,6 +719,60 @@ class PreviewRenderService:
                 "Preview render failed. "
                 f"GIF error: {gif_result.error_message}; PNG error: {png_result.error_message}"
             ),
+        )
+
+    async def render_preview_png_from_lottie(
+        self,
+        lottie_data: dict[str, Any],
+        output_name: str | None = None,
+    ) -> PreviewRenderResult:
+        temp_id = output_name or uuid.uuid4().hex
+        temp_json = self._settings.temp_dir / f"{temp_id}.json"
+        output_png = self._settings.previews_dir / f"{temp_id}.png"
+        temp_json.parent.mkdir(parents=True, exist_ok=True)
+        self._settings.previews_dir.mkdir(parents=True, exist_ok=True)
+
+        self._logger.info("Preview PNG build start output_id=%s", temp_id)
+        try:
+            await asyncio.to_thread(write_json_file, temp_json, lottie_data, True)
+        except Exception:
+            self._logger.error(
+                "Failed to write temp json for PNG preview path=%s",
+                str(temp_json),
+                exc_info=True,
+            )
+            return PreviewRenderResult(
+                success=False,
+                output_path=None,
+                frame_count=0,
+                width=0,
+                height=0,
+                error_message="Failed to serialize lottie preview input for PNG",
+            )
+
+        png_result = await self._render_async(
+            json_path=str(temp_json),
+            output_path=str(output_png),
+            render_kind="png",
+        )
+        temp_json.unlink(missing_ok=True)
+        if png_result.success and png_result.output_path:
+            self._logger.info("Preview PNG ready output=%s", png_result.output_path)
+            return png_result
+
+        output_png.unlink(missing_ok=True)
+        self._logger.error(
+            "Preview PNG render failed output_id=%s error=%s",
+            temp_id,
+            png_result.error_message,
+        )
+        return PreviewRenderResult(
+            success=False,
+            output_path=None,
+            frame_count=0,
+            width=0,
+            height=0,
+            error_message=f"Preview PNG render failed: {png_result.error_message}",
         )
 
     async def render_preview_gif_from_tgs(

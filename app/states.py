@@ -3,7 +3,6 @@ from aiogram.fsm.state import State, StatesGroup
 
 class MainMenuState(StatesGroup):
     idle = State()
-    waiting_promo = State()
     waiting_broadcast = State()
 
 

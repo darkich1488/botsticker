@@ -132,6 +132,35 @@ _EMOJI30_VISUAL_X_NUDGE_PX = -30.0
 _EMOJI31_TEMPLATE_FILE = "emoji31.json"
 _EMOJI31_FIXED_FONT_SIZE = 136.4
 _EMOJI31_VISUAL_X_NUDGE_PX = 10.0
+_EMOJI31_VISUAL_Y_NUDGE_PX = 2.0
+_EMOJI31_OVERLAY_LAYERS_TARGET = 4
+_EMOJI33_TEMPLATE_FILE = "emoji33.json"
+_EMOJI33_FIXED_FONT_SIZE = 196.4
+_EMOJI33_VISUAL_X_NUDGE_PX = 50.0
+_EMOJI34_TEMPLATE_FILE = "emoji34.json"
+_EMOJI34_VISUAL_X_NUDGE_PX = -15.0
+_EMOJI34_VISUAL_Y_NUDGE_PX = -30.0
+_EMOJI35_TEMPLATE_FILE = "emoji35.json"
+_EMOJI35_VISUAL_X_NUDGE_PX = -45.0
+_EMOJI35_VISUAL_Y_NUDGE_PX = -20.0
+_EMOJI36_TEMPLATE_FILE = "emoji36.json"
+_EMOJI36_FIXED_FONT_SIZE = 56.0
+_EMOJI37_TEMPLATE_FILE = "emoji37.json"
+_EMOJI38_TEMPLATE_FILE = "emoji38.json"
+_EMOJI38_FIXED_FONT_SIZE = 106.0
+_EMOJI38_VISUAL_X_NUDGE_PX = 20.0
+_EMOJI38_VISUAL_Y_NUDGE_PX = -15.0
+_EMOJI39_TEMPLATE_FILE = "emoji39.json"
+_EMOJI39_VISUAL_Y_NUDGE_PX = -40.0
+_EMOJI40_TEMPLATE_FILE = "emoji40.json"
+_EMOJI40_VISUAL_X_NUDGE_PX = -30.0
+_EMOJI40_VISUAL_Y_NUDGE_PX = -30.0
+_EMOJI41_TEMPLATE_FILE = "emoji41.json"
+_EMOJI41_FIXED_FONT_SIZE = 25.0
+_EMOJI41_VISUAL_X_NUDGE_PX = -654.0
+_EMOJI42_TEMPLATE_FILE = "emoji42.json"
+_EMOJI42_VISUAL_X_NUDGE_PX = -5.0
+_EMOJI42_VISUAL_Y_NUDGE_PX = 230.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -1470,6 +1499,13 @@ def inject_text_shapes(
     is_emoji4_template = template_name_value.lower() == _EMOJI4_TEMPLATE_FILE
     is_emoji10_template = template_name_value.lower() == _EMOJI10_TEMPLATE_FILE
     is_emoji18_template = template_name_value.lower() == _EMOJI18_TEMPLATE_FILE
+    is_emoji33_template = template_name_value.lower() == _EMOJI33_TEMPLATE_FILE
+    template_name_lc = template_name_value.lower()
+    convert_any_text_layer_name_for_template = template_name_lc in {
+        _EMOJI37_TEMPLATE_FILE,
+        _EMOJI40_TEMPLATE_FILE,
+        _EMOJI41_TEMPLATE_FILE,
+    }
 
     layers_by_ind: dict[int, dict[str, Any]] = {}
     for candidate in layers:
@@ -1492,7 +1528,7 @@ def inject_text_shapes(
         name_raw = str(layer.get("nm", "")).strip()
         if _is_glyph_bank_layer(name_raw):
             continue
-        if _normalize_name(name_raw) != target_name:
+        if (not convert_any_text_layer_name_for_template) and _normalize_name(name_raw) != target_name:
             continue
 
         text_container = layer.get("t")
@@ -1615,7 +1651,7 @@ def inject_text_shapes(
             box_center_y=0.0,
             box_max_width=box_max_width,
             box_max_height=box_max_height,
-            disable_fit_down=(is_emoji4_template or is_emoji10_template or is_emoji18_template),
+            disable_fit_down=(is_emoji4_template or is_emoji10_template or is_emoji18_template or is_emoji33_template),
             logger=active_logger,
         )
         active_logger.info(
@@ -2038,6 +2074,9 @@ def inject_text_shapes(
             _EMOJI3_TEMPLATE_FILE,
             _EMOJI8_TEMPLATE_FILE,
             _EMOJI14_TEMPLATE_FILE,
+            _EMOJI40_TEMPLATE_FILE,
+            _EMOJI41_TEMPLATE_FILE,
+            _EMOJI42_TEMPLATE_FILE,
         }
         corrected_tr_p_x: float | None = None
         corrected_tr_p_y: float | None = None
@@ -2236,6 +2275,20 @@ def inject_text_shapes(
             desired_visual_x_nudge_px = _EMOJI30_VISUAL_X_NUDGE_PX
         elif template_name_lc == _EMOJI31_TEMPLATE_FILE:
             desired_visual_x_nudge_px = _EMOJI31_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI33_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI33_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI34_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI34_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI35_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI35_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI38_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI38_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI40_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI40_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI41_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI41_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI42_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI42_VISUAL_X_NUDGE_PX
         if abs(desired_visual_x_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list) and tr_k:
@@ -2289,6 +2342,20 @@ def inject_text_shapes(
             desired_visual_y_nudge_px = _EMOJI27_VISUAL_Y_NUDGE_PX
         elif template_name_lc == _EMOJI28_TEMPLATE_FILE:
             desired_visual_y_nudge_px = _EMOJI28_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI31_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI31_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI34_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI34_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI35_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI35_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI38_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI38_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI39_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI39_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI40_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI40_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI42_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI42_VISUAL_Y_NUDGE_PX
         if abs(desired_visual_y_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list):
@@ -2614,6 +2681,38 @@ def inject_text_shapes(
                 template_name_value or None,
                 final_index,
                 overlay_anchor_index,
+            )
+        elif template_name_value.lower() == _EMOJI31_TEMPLATE_FILE:
+            desired_final_index = final_index
+            if GENERATED_LAYER_RENDER_ORDER == "first_to_last":
+                for candidate_index in range(len(layers) - 1, -1, -1):
+                    overlay_shapes = _overlay_counts(layers, range(candidate_index + 1, len(layers))).get("shape", 0)
+                    if final_index > candidate_index and overlay_shapes > 0:
+                        overlay_shapes -= 1
+                    if overlay_shapes >= _EMOJI31_OVERLAY_LAYERS_TARGET:
+                        desired_final_index = candidate_index
+                        break
+            else:
+                for candidate_index in range(0, len(layers)):
+                    overlay_shapes = _overlay_counts(layers, range(0, candidate_index)).get("shape", 0)
+                    if final_index < candidate_index and overlay_shapes > 0:
+                        overlay_shapes -= 1
+                    if overlay_shapes >= _EMOJI31_OVERLAY_LAYERS_TARGET:
+                        desired_final_index = candidate_index
+                        break
+            if desired_final_index != final_index:
+                moved_layer = layers.pop(final_index)
+                if desired_final_index > final_index:
+                    desired_final_index -= 1
+                layers.insert(desired_final_index, moved_layer)
+                moved_after_conversion = True
+                final_index = desired_final_index
+                final_generated_layer = moved_layer
+            active_logger.info(
+                "Emoji31 stacking override template_name=%s final_generated_index=%s overlay_layers_target=%s",
+                template_name_value or None,
+                final_index,
+                _EMOJI31_OVERLAY_LAYERS_TARGET,
             )
 
         overlay_last_to_first = _overlay_counts(layers, range(0, final_index))
@@ -3340,6 +3439,12 @@ def replace_text_in_lottie(
     fixed_font_size_for_template: float | None = None
     if template_name_value.lower() == _EMOJI6_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI6_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI36_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI36_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI38_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI38_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI41_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI41_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI13_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI13_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI14_TEMPLATE_FILE:
@@ -3372,6 +3477,8 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI30_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI31_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI31_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI33_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI33_FIXED_FONT_SIZE
     target_names = {name.lower() for name in (target_layer_names or set())}
     comp_width = _as_float(data.get("w"))
     comp_height = _as_float(data.get("h"))
@@ -4188,6 +4295,7 @@ def build_tgs_bytes(data: dict[str, Any], logger: logging.Logger | None = None) 
             ("quantize_p3_strip_meta", 3, True),
             ("quantize_p2_strip_meta", 2, True),
             ("quantize_p1_strip_meta", 1, True),
+            ("quantize_p0_strip_meta", 0, True),
         )
         for strategy_name, precision, strip_metadata in optimization_passes:
             candidate_payload = _shrink_lottie_payload(
@@ -4629,6 +4737,12 @@ class LottieService:
                 _EMOJI25_TEMPLATE_FILE,
                 _EMOJI27_TEMPLATE_FILE,
                 _EMOJI30_TEMPLATE_FILE,
+                _EMOJI33_TEMPLATE_FILE,
+                _EMOJI34_TEMPLATE_FILE,
+                _EMOJI35_TEMPLATE_FILE,
+                _EMOJI36_TEMPLATE_FILE,
+                _EMOJI40_TEMPLATE_FILE,
+                _EMOJI41_TEMPLATE_FILE,
             }:
                 nested_text_layers_found = 0
                 nested_text_layers_converted = 0
@@ -4649,7 +4763,11 @@ class LottieService:
                                 root_h = _as_float(payload.get("h"))
                                 if root_h is not None:
                                     asset["h"] = int(round(root_h))
-                        if template_name_norm == _EMOJI14_TEMPLATE_FILE:
+                        if template_name_norm in {
+                            _EMOJI14_TEMPLATE_FILE,
+                            _EMOJI40_TEMPLATE_FILE,
+                            _EMOJI41_TEMPLATE_FILE,
+                        }:
                             target_layers_in_asset = [
                                 layer
                                 for layer in asset_layers

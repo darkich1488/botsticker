@@ -5,6 +5,7 @@ import logging
 from time import perf_counter
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -85,7 +86,14 @@ async def show_main_menu(
             callback_data=target.data,
             update_id=target.id,
         )
-        await target.answer()
+        try:
+            await target.answer()
+        except TelegramBadRequest as exc:
+            lowered = str(exc).lower()
+            if "query is too old" in lowered or "query id is invalid" in lowered:
+                logger.info("Skip stale callback answer handler_name=show_main_menu update_id=%s", target.id)
+            else:
+                raise
     else:
         await message.answer(text, reply_markup=reply_markup)
 
@@ -129,46 +137,6 @@ async def back_main(
             callback.id,
             int((perf_counter() - t0) * 1000),
         )
-
-
-@router.callback_query(MainMenuState.idle, MainMenuCallback.filter(F.action == "promo"))
-async def promo_callback(callback: CallbackQuery, state: FSMContext) -> None:
-    t0 = perf_counter()
-    try:
-        await state.set_state(MainMenuState.waiting_promo)
-        if callback.message:
-            await callback.message.answer("Введите промокод сообщением.")
-        await callback.answer()
-    finally:
-        logger.info(
-            "Callback timing handler_name=promo_callback callback_data=%s update_id=%s duration_ms=%s",
-            callback.data,
-            callback.id,
-            int((perf_counter() - t0) * 1000),
-        )
-
-
-@router.message(MainMenuState.waiting_promo)
-async def promo_message(
-    message: Message,
-    state: FSMContext,
-    user_repository: InMemoryUserRepository,
-    pricing_service: PricingService,
-) -> None:
-    if message.from_user is None:
-        return
-    code = (message.text or "").strip().upper()
-    if code == "DEMO50":
-        balance = user_repository.add_balance(message.from_user.id, 50.0)
-        await message.answer(f"Промокод применен. Новый баланс: {balance:.2f}")
-    else:
-        await message.answer("Промокод не найден.")
-    await show_main_menu(
-        target=message,
-        state=state,
-        user_repository=user_repository,
-        pricing_service=pricing_service,
-    )
 
 
 @router.callback_query(MainMenuState.idle, MainMenuCallback.filter(F.action == "admin_broadcast"))

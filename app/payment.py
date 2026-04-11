@@ -7,12 +7,15 @@ from pathlib import Path
 from time import perf_counter
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
+from aiogram.types import CallbackQuery, FSInputFile, LabeledPrice, Message, PreCheckoutQuery
 
 from app.callbacks import PaymentActionCallback, PreviewActionCallback, TemplateActionCallback
+from app.config import Settings
 from app.keyboards.preview import payment_kb, result_kb
 from app.models.payment import PaymentStatus
+from app.preview_helpers import build_blue_preview_collage
 from app.services.lottie_service import LottieService
 from app.services.pack_service import EmojiPackService
 from app.services.payment_service import PaymentService
@@ -36,6 +39,199 @@ STAGES = (
     "Формирую emoji pack...",
 )
 
+PROMO_CANCEL_WORDS = {"-", "отмена", "/cancel", "/stop"}
+
+def _compute_invoice_totals(
+    *,
+    base_price: float,
+    template_count: int,
+    discount_value: float = 0.0,
+) -> tuple[float, int, int, int]:
+    safe_base = max(0.0, float(base_price))
+    safe_discount = max(0.0, float(discount_value))
+    discounted_amount = max(0.0, round(max(0.0, safe_base - safe_discount), 2))
+    safe_template_count = max(1, int(template_count))
+    base_stars_total = max(0, int(round(safe_base)))
+    stars_total = max(0, int(round(discounted_amount)))
+    stars_per_sticker = max(1, base_stars_total // safe_template_count) if base_stars_total > 0 else 0
+    return discounted_amount, stars_total, stars_per_sticker, base_stars_total
+
+
+def _normalize_promo_code(raw: str) -> str:
+    return raw.strip().upper()
+
+
+def _build_payment_text(
+    *,
+    template_count: int,
+    stars_per_sticker: int,
+    base_stars_total: int,
+    stars_total: int,
+    discount_stars: int = 0,
+    promo_code: str | None = None,
+    pay_required: bool = True,
+) -> str:
+    payment_hint = "Оплатите инвойс ниже и нажмите «Проверить оплату»."
+    if not pay_required:
+        payment_hint = "Оплата не требуется. Нажмите «Создать набор»."
+    lines = [
+        "Оплата",
+        "",
+        f"Стикеров: {template_count}",
+        f"Цена за 1 стикер: {stars_per_sticker} ⭐",
+        f"Базовая цена: {base_stars_total} ⭐",
+    ]
+    if discount_stars > 0 and promo_code:
+        lines.append(f"Промокод {promo_code}: -{discount_stars} ⭐")
+    lines.extend(
+        [
+            f"Итого к оплате: {stars_total} ⭐",
+            "",
+            payment_hint,
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _resolve_promo_discount(
+    *,
+    raw_code: str,
+    settings: Settings,
+) -> tuple[str, float] | None:
+    promo_code = _normalize_promo_code(raw_code)
+    if not promo_code:
+        return None
+    discount = settings.payment_promo_codes.get(promo_code)
+    if discount is None:
+        return None
+    return promo_code, float(discount)
+
+
+async def _issue_payment_invoice(
+    *,
+    target_message: Message,
+    state: FSMContext,
+    payment_service: PaymentService,
+    user_id: int,
+    category_id: str | None,
+    template_count: int,
+    base_price: float,
+    edit_existing: bool,
+    handler_name: str,
+    discount_value: float = 0.0,
+    promo_code: str | None = None,
+    callback_data: str | None = None,
+    update_id: str | None = None,
+) -> None:
+    _, stars_total, stars_per_sticker, base_stars_total = _compute_invoice_totals(
+        base_price=base_price,
+        template_count=template_count,
+        discount_value=discount_value,
+    )
+    discount_stars = max(0, base_stars_total - stars_total)
+    pay_required = stars_total > 0
+    invoice_id = "FREE_INVOICE"
+    if pay_required:
+        invoice = await payment_service.create_invoice(
+            user_id=user_id,
+            amount=float(stars_total),
+            description=f"Emoji pack ({category_id if isinstance(category_id, str) else 'unknown'})",
+        )
+        invoice_id = invoice.id
+    await state.update_data(
+        invoice_id=invoice_id,
+        payment_amount=float(stars_total),
+        payment_base_price=float(base_price),
+        payment_discount_value=float(discount_value),
+        payment_promo_code=promo_code or "",
+        payment_is_free=not pay_required,
+        awaiting_payment_promo=False,
+    )
+    payment_text = _build_payment_text(
+        template_count=template_count,
+        stars_per_sticker=stars_per_sticker,
+        base_stars_total=base_stars_total,
+        stars_total=stars_total,
+        discount_stars=discount_stars,
+        promo_code=promo_code,
+        pay_required=pay_required,
+    )
+    if edit_existing:
+        await safe_edit_message(
+            message=target_message,
+            text=payment_text,
+            reply_markup=payment_kb(invoice_id, pay_required=pay_required),
+            logger=logger,
+            handler_name=handler_name,
+            callback_data=callback_data,
+            update_id=update_id,
+        )
+    else:
+        await target_message.answer(
+            payment_text,
+            reply_markup=payment_kb(invoice_id, pay_required=pay_required),
+        )
+
+    if pay_required:
+        await target_message.answer_invoice(
+            title="Оплата emoji pack",
+            description=f"{template_count} стикеров × {stars_per_sticker} ⭐",
+            payload=invoice_id,
+            currency="XTR",
+            prices=[LabeledPrice(label="Emoji pack", amount=stars_total)],
+            start_parameter=f"emoji_{invoice_id}",
+        )
+
+
+async def _send_preview_before_payment(
+    *,
+    target_message: Message,
+    state: FSMContext,
+    preview_service: PreviewService,
+    template_repository: TemplateRepository,
+    user_id: int,
+    category_id: str,
+    templates: list,
+    input_text: str,
+    stroke_color: str = "#111111",
+    elements_color: str = "#FFFFFF",
+) -> None:
+    data = await state.get_data()
+    context_id = data.get("preview_context_id")
+    context = preview_service.get_context(context_id, user_id=user_id) if isinstance(context_id, str) else None
+
+    if context is None or not context.preview_assets:
+        try:
+            context = await preview_service.build_preview_context(
+                user_id=user_id,
+                category_id=category_id,
+                templates=templates,
+                input_text=input_text,
+                stroke_color=stroke_color,
+                elements_color=elements_color,
+                include_preview_assets=True,
+            )
+            await state.update_data(
+                preview_context_id=context.context_id,
+                selected_template_ids=context.selected_template_ids,
+            )
+        except Exception as exc:
+            logger.warning("Preview before payment failed user_id=%s error=%s", user_id, exc)
+            return
+
+    if not context.preview_assets:
+        return
+
+    collage_path = build_blue_preview_collage(preview_assets=context.preview_assets, user_id=user_id)
+    try:
+        if collage_path:
+            await target_message.answer_photo(photo=FSInputFile(collage_path), caption="Пример")
+            Path(collage_path).unlink(missing_ok=True)
+        else:
+            await target_message.answer_photo(photo=FSInputFile(context.preview_assets[0].output_path), caption="Пример")
+    except Exception as exc:
+        logger.warning("Preview photo send failed user_id=%s error=%s", user_id, exc)
+
 
 @router.callback_query(CreatePackState.preview, PreviewActionCallback.filter(F.action == "to_payment"))
 @router.callback_query(CreatePackState.choosing_templates, TemplateActionCallback.filter(F.action == "to_payment"))
@@ -54,15 +250,24 @@ async def to_payment(
     t0 = perf_counter()
     if callback.message is None or callback.from_user is None:
         return
+    try:
+        await callback.answer()
+    except TelegramBadRequest as exc:
+        message = str(exc).lower()
+        if "query is too old" in message or "query id is invalid" in message:
+            logger.info("Skip stale callback answer handler_name=to_payment update_id=%s", callback.id)
+        else:
+            raise
 
     data = await state.get_data()
     context_id = data.get("preview_context_id")
     context = preview_service.get_context(context_id, user_id=callback.from_user.id) if isinstance(context_id, str) else None
     category_id = data.get("selected_category_id")
+    input_text = data.get("input_text")
     selected_template_ids: list[int]
+    templates: list
     computed_price: float
     if context is None:
-        input_text = data.get("input_text")
         selected_ids = data.get("selected_template_ids", [])
         if not isinstance(category_id, str) or not isinstance(input_text, str) or not selected_ids:
             await callback.answer("Сначала выберите шаблоны и текст.", show_alert=True)
@@ -85,7 +290,13 @@ async def to_payment(
     else:
         if not isinstance(category_id, str):
             category_id = context.category_id
+        if not isinstance(input_text, str):
+            input_text = context.input_text
         selected_template_ids = list(context.selected_template_ids)
+        templates = template_repository.get_templates_by_ids(selected_template_ids)
+        if not templates:
+            await callback.answer("Не удалось найти выбранные шаблоны.", show_alert=True)
+            return
         computed_price = float(context.price)
         logger.info(
             "to_payment context path category=%s templates=%s price=%s context_reused=True",
@@ -94,9 +305,10 @@ async def to_payment(
             computed_price,
         )
 
+    await state.update_data(selected_template_ids=selected_template_ids)
     template_count = max(1, len(selected_template_ids))
-    stars_total = max(1, int(round(computed_price)))
-    stars_per_sticker = max(1, stars_total // template_count)
+    promo_code = _normalize_promo_code(str(data.get("payment_promo_code", "")))
+    discount_value = float(data.get("payment_discount_value") or 0.0) if promo_code else 0.0
 
     if user_repository.is_admin(callback.from_user.id):
         await callback.answer("Для админа оплата не требуется.")
@@ -119,40 +331,36 @@ async def to_payment(
             await callback.message.answer("Не удалось завершить создание набора. Попробуйте снова чуть позже.")
         return
 
-    invoice = await payment_service.create_invoice(
-        user_id=callback.from_user.id,
-        amount=float(stars_total),
-        description=f"Emoji pack ({category_id if isinstance(category_id, str) else 'unknown'})",
-    )
-    await state.update_data(invoice_id=invoice.id, payment_amount=invoice.amount)
+    if isinstance(category_id, str) and isinstance(input_text, str):
+        await _send_preview_before_payment(
+            target_message=callback.message,
+            state=state,
+            preview_service=preview_service,
+            template_repository=template_repository,
+            user_id=callback.from_user.id,
+            category_id=category_id,
+            templates=templates,
+            input_text=input_text,
+        )
+
     await state.set_state(CreatePackState.payment)
 
     try:
-        await safe_edit_message(
-            message=callback.message,
-            text=(
-                "Оплата\n\n"
-                f"Стикеров: {template_count}\n"
-                f"Цена за 1 стикер: {stars_per_sticker} ⭐\n"
-                f"Итого: {stars_total} ⭐\n\n"
-                "Оплатите инвойс ниже и нажмите «Проверить оплату»."
-            ),
-            reply_markup=payment_kb(invoice.id),
-            logger=logger,
+        await _issue_payment_invoice(
+            target_message=callback.message,
+            state=state,
+            payment_service=payment_service,
+            user_id=callback.from_user.id,
+            category_id=category_id if isinstance(category_id, str) else None,
+            template_count=template_count,
+            base_price=float(computed_price),
+            discount_value=discount_value,
+            promo_code=promo_code or None,
+            edit_existing=True,
             handler_name="to_payment",
             callback_data=callback.data,
             update_id=callback.id,
         )
-
-        await callback.message.answer_invoice(
-            title="Оплата emoji pack",
-            description=f"{template_count} стикеров × {stars_per_sticker} ⭐",
-            payload=invoice.id,
-            currency="XTR",
-            prices=[LabeledPrice(label="Emoji pack", amount=stars_total)],
-            start_parameter=f"emoji_{invoice.id}",
-        )
-        await callback.answer()
     finally:
         logger.info(
             "Callback timing handler_name=to_payment callback_data=%s update_id=%s duration_ms=%s",
@@ -160,6 +368,101 @@ async def to_payment(
             callback.id,
             int((perf_counter() - t0) * 1000),
         )
+
+
+@router.callback_query(CreatePackState.payment, PaymentActionCallback.filter(F.action == "promo"))
+async def payment_promo_start(
+    callback: CallbackQuery,
+    callback_data: PaymentActionCallback,
+    state: FSMContext,
+    settings: Settings,
+) -> None:
+    t0 = perf_counter()
+    if callback.from_user is None or callback.message is None:
+        return
+    try:
+        data = await state.get_data()
+        expected_invoice_id = str(data.get("invoice_id", "")).strip()
+        if expected_invoice_id and callback_data.invoice_id != expected_invoice_id:
+            await callback.answer("Используйте кнопку из последнего инвойса.", show_alert=True)
+            return
+        if not settings.payment_promo_codes:
+            await callback.answer("Промокоды сейчас отключены.", show_alert=True)
+            return
+        await state.update_data(awaiting_payment_promo=True)
+        await callback.message.answer("Введите промокод сообщением.\nДля отмены отправьте «-».")
+        await callback.answer()
+    finally:
+        logger.info(
+            "Callback timing handler_name=payment_promo_start callback_data=%s update_id=%s duration_ms=%s",
+            callback.data,
+            callback.id,
+            int((perf_counter() - t0) * 1000),
+        )
+
+
+@router.message(CreatePackState.payment, F.text)
+async def payment_promo_message(
+    message: Message,
+    state: FSMContext,
+    settings: Settings,
+    payment_service: PaymentService,
+    user_repository: InMemoryUserRepository,
+) -> None:
+    if message.from_user is None:
+        return
+    data = await state.get_data()
+    if not bool(data.get("awaiting_payment_promo")):
+        return
+
+    raw_text = str(message.text or "").strip()
+    if not raw_text:
+        await message.answer("Введите промокод текстом.")
+        return
+
+    if raw_text.lower() in PROMO_CANCEL_WORDS:
+        await state.update_data(awaiting_payment_promo=False)
+        await message.answer("Ввод промокода отменён.")
+        return
+
+    resolved = _resolve_promo_discount(raw_code=raw_text, settings=settings)
+    if resolved is None:
+        await message.answer("Промокод не найден. Попробуйте ещё раз или отправьте «-» для отмены.")
+        return
+
+    promo_code, discount_value = resolved
+    status, _ = user_repository.consume_limited_promo(
+        user_id=message.from_user.id,
+        code=promo_code,
+        max_uses=settings.payment_promo_max_uses,
+    )
+    if status == "already_used":
+        await message.answer("Вы уже использовали этот промокод.")
+        return
+    if status == "limit_reached":
+        await message.answer("Лимит активаций этого промокода исчерпан.")
+        return
+
+    selected_template_ids = data.get("selected_template_ids", [])
+    template_count = max(1, len(selected_template_ids)) if isinstance(selected_template_ids, list) else 1
+    category_id = data.get("selected_category_id")
+    base_price = float(data.get("payment_base_price") or 0.0)
+
+    await _issue_payment_invoice(
+        target_message=message,
+        state=state,
+        payment_service=payment_service,
+        user_id=message.from_user.id,
+        category_id=category_id if isinstance(category_id, str) else None,
+        template_count=template_count,
+        base_price=base_price,
+        discount_value=discount_value,
+        promo_code=promo_code,
+        edit_existing=False,
+        handler_name="payment_promo_message",
+        update_id=str(message.message_id),
+    )
+    await message.answer(f"Промокод {promo_code} применён. Инвойс обновлён.")
 
 
 @router.pre_checkout_query()
@@ -296,7 +599,8 @@ async def _run_generation_pipeline(
 
     base_price = pricing_service.calculate_templates_price(len(templates))
     is_free = force_free or user_repository.is_admin(user_id)
-    total_price = 0.0 if is_free else base_price
+    paid_from_state = float(data.get("payment_amount") or 0.0)
+    total_price = 0.0 if is_free else max(0.0, paid_from_state or base_price)
     stroke_color = "#111111"
     elements_color = "#FFFFFF"
 
@@ -538,6 +842,47 @@ async def payment_check(
 ) -> None:
     t0 = perf_counter()
     if callback.from_user is None or callback.message is None:
+        return
+    data = await state.get_data()
+    expected_invoice_id = str(data.get("invoice_id", "")).strip()
+    if expected_invoice_id and callback_data.invoice_id != expected_invoice_id:
+        await callback.answer("Используйте кнопку из последнего инвойса.", show_alert=True)
+        return
+    payment_amount = float(data.get("payment_amount") or 0.0)
+    if payment_amount <= 0:
+        await callback.answer("Оплата не требуется. Запускаю генерацию.")
+        try:
+            await _run_generation_pipeline(
+                trigger_message=callback.message,
+                user_id=callback.from_user.id,
+                state=state,
+                template_repository=template_repository,
+                lottie_service=lottie_service,
+                preview_service=preview_service,
+                pack_service=pack_service,
+                progress_service=progress_service,
+                user_repository=user_repository,
+                pricing_service=pricing_service,
+                force_free=False,
+            )
+        except Exception as exc:
+            logger.exception("Pack generation failed user_id=%s error=%s", callback.from_user.id, exc)
+            await callback.message.answer("Не удалось завершить создание набора. Попробуйте снова чуть позже.")
+            from app.start import show_main_menu
+
+            await show_main_menu(
+                target=callback,
+                state=state,
+                user_repository=user_repository,
+                pricing_service=pricing_service,
+            )
+        finally:
+            logger.info(
+                "Callback timing handler_name=payment_check callback_data=%s update_id=%s duration_ms=%s",
+                callback.data,
+                callback.id,
+                int((perf_counter() - t0) * 1000),
+            )
         return
 
     status = await payment_service.check_payment(

@@ -109,9 +109,9 @@ class PreviewService:
 
         preview_assets: list[PreviewAsset] = []
         if include_preview_assets:
-            for item in processed_items[: self._max_preview_assets]:
+            for item in processed_items:
                 output_name = f"preview_{user_id}_{item.template_id}_{uuid.uuid4().hex[:8]}"
-                result = await self._preview_render_service.render_preview_gif_from_lottie(
+                result = await self._preview_render_service.render_preview_png_from_lottie(
                     item.processed_lottie,
                     output_name=output_name,
                 )
@@ -124,12 +124,10 @@ class PreviewService:
                     )
                     continue
                 output_path = result.output_path
-                suffix = Path(output_path).suffix.lower()
-                media_type = "animation" if suffix == ".gif" else "photo"
                 preview_assets.append(
                     PreviewAsset(
                         template_id=item.template_id,
-                        media_type=media_type,
+                        media_type="photo",
                         output_path=output_path,
                         render_result=result,
                     )

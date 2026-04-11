@@ -11,6 +11,7 @@ class InMemoryUserRepository:
         self._lock = threading.Lock()
         self._users: dict[int, UserProfile] = {}
         self._admin_user_ids = set(admin_user_ids or set())
+        self._promo_users_by_code: dict[str, set[int]] = {}
 
     def _get_or_create_unlocked(self, user_id: int) -> UserProfile:
         profile = self._users.get(user_id)
@@ -61,3 +62,45 @@ class InMemoryUserRepository:
     def list_user_ids(self) -> list[int]:
         with self._lock:
             return list(self._users.keys())
+
+    def redeem_limited_promo(
+        self,
+        *,
+        user_id: int,
+        code: str,
+        reward: float,
+        max_uses: int,
+    ) -> tuple[str, float, int]:
+        normalized_code = code.strip().upper()
+        safe_reward = round(float(reward), 2)
+        safe_max_uses = max(1, int(max_uses))
+        with self._lock:
+            profile = self._get_or_create_unlocked(user_id)
+            used_users = self._promo_users_by_code.setdefault(normalized_code, set())
+            used_count = len(used_users)
+            if user_id in used_users:
+                return "already_used", profile.balance, used_count
+            if used_count >= safe_max_uses:
+                return "limit_reached", profile.balance, used_count
+            used_users.add(user_id)
+            profile.balance = round(profile.balance + safe_reward, 2)
+            return "ok", profile.balance, len(used_users)
+
+    def consume_limited_promo(
+        self,
+        *,
+        user_id: int,
+        code: str,
+        max_uses: int,
+    ) -> tuple[str, int]:
+        normalized_code = code.strip().upper()
+        safe_max_uses = max(1, int(max_uses))
+        with self._lock:
+            used_users = self._promo_users_by_code.setdefault(normalized_code, set())
+            used_count = len(used_users)
+            if user_id in used_users:
+                return "already_used", used_count
+            if used_count >= safe_max_uses:
+                return "limit_reached", used_count
+            used_users.add(user_id)
+            return "ok", len(used_users)

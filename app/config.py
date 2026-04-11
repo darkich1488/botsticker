@@ -35,6 +35,8 @@ class Settings:
     templates_per_page: int
     lottie_renderer_cmd: str | None
     admin_user_ids: tuple[int, ...]
+    payment_promo_codes: dict[str, float]
+    payment_promo_max_uses: int
     categories: tuple[CategoryConfig, ...]
 
 
@@ -72,6 +74,35 @@ def _int_tuple_env(name: str, default: tuple[int, ...]) -> tuple[int, ...]:
         except ValueError:
             continue
     return tuple(dict.fromkeys(values)) if values else default
+
+
+def _promo_codes_env(name: str) -> dict[str, float]:
+    raw = (os.getenv(name, "") or "").strip()
+    if not raw:
+        return {}
+
+    result: dict[str, float] = {}
+    for chunk in raw.split(","):
+        item = chunk.strip()
+        if not item:
+            continue
+        if ":" in item:
+            code_raw, amount_raw = item.split(":", 1)
+        elif "=" in item:
+            code_raw, amount_raw = item.split("=", 1)
+        else:
+            continue
+        code = code_raw.strip().upper()
+        if not code:
+            continue
+        try:
+            amount = round(float(amount_raw.strip()), 2)
+        except ValueError:
+            continue
+        if amount <= 0:
+            continue
+        result[code] = amount
+    return result
 
 
 def load_settings() -> Settings:
@@ -123,6 +154,8 @@ def load_settings() -> Settings:
         templates_per_page=_int_env("TEMPLATES_PER_PAGE", 50),
         lottie_renderer_cmd=renderer_cmd or None,
         admin_user_ids=_int_tuple_env("ADMIN_USER_IDS", (925896498, 8619205109)),
+        payment_promo_codes=_promo_codes_env("PAYMENT_PROMO_CODES"),
+        payment_promo_max_uses=_int_env("PAYMENT_PROMO_MAX_USES", 100),
         categories=categories,
     )
 

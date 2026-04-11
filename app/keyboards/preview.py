@@ -18,11 +18,20 @@ def preview_kb() -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def payment_kb(invoice_id: str) -> InlineKeyboardMarkup:
+def payment_kb(
+    invoice_id: str,
+    *,
+    pay_required: bool = True,
+) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
+    check_text = "✅ Проверить оплату" if pay_required else "✅ Создать набор"
     kb.button(
-        text="✅ Проверить оплату",
+        text=check_text,
         callback_data=PaymentActionCallback(action="check", invoice_id=invoice_id).pack(),
+    )
+    kb.button(
+        text="🎁 Промокод",
+        callback_data=PaymentActionCallback(action="promo", invoice_id=invoice_id).pack(),
     )
     kb.button(
         text="↩️ Назад",
