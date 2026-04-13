@@ -126,6 +126,13 @@ def load_settings() -> Settings:
             supports_recolor=False,
         ),
         CategoryConfig(
+            id="passport",
+            title="Паспорт",
+            description="Шаблоны из раздела passport.",
+            path_to_templates=(templates_root / "passport").resolve(),
+            supports_recolor=False,
+        ),
+        CategoryConfig(
             id="recolor",
             title="Перекрас",
             description="Режим в разработке.",

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
@@ -40,6 +41,23 @@ STAGES = (
 )
 
 PROMO_CANCEL_WORDS = {"-", "отмена", "/cancel", "/stop"}
+GENERATION_CONCURRENCY = 10
+PASSPORT_CATEGORY_ID = "passport"
+PASSPORT_USERNAME_LAYER_NAME = "юзер"
+
+
+def _normalize_passport_username_for_layer(raw: object) -> str:
+    value = str(raw or "").strip()
+    lower = value.lower()
+    for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
+        if lower.startswith(prefix):
+            value = value[len(prefix):]
+            break
+    value = value.split("?", 1)[0].split("/", 1)[0].strip()
+    value = value.lstrip("@").strip()
+    if not value:
+        return ""
+    return f"@{value}"
 
 def _compute_invoice_totals(
     *,
@@ -331,17 +349,73 @@ async def to_payment(
             await callback.message.answer("Не удалось завершить создание набора. Попробуйте снова чуть позже.")
         return
 
+    payment_progress_text = progress_service.format_progress_text(
+        stage_index=1,
+        total_stages=len(STAGES),
+        stage_name=STAGES[0],
+        percent=int(round((1 / max(1, len(STAGES))) * 100)),
+        detail=f"Найдено шаблонов: {len(templates)}",
+    )
+    await safe_edit_message(
+        message=callback.message,
+        text=payment_progress_text,
+        reply_markup=None,
+        logger=logger,
+        handler_name="to_payment_loading",
+        callback_data=callback.data,
+        update_id=callback.id,
+    )
+
+    loading_done = asyncio.Event()
+
+    async def _animate_payment_loading() -> None:
+        percents = (20, 30, 40, 50, 60, 70, 80, 90)
+        idx = 0
+        while not loading_done.is_set():
+            percent = percents[idx % len(percents)]
+            idx += 1
+            animated_text = progress_service.format_progress_text(
+                stage_index=1,
+                total_stages=len(STAGES),
+                stage_name=STAGES[0],
+                percent=percent,
+                detail=f"Найдено шаблонов: {len(templates)}",
+            )
+            await safe_edit_message(
+                message=callback.message,
+                text=animated_text,
+                reply_markup=None,
+                logger=logger,
+                handler_name="to_payment_loading_tick",
+                callback_data=callback.data,
+                update_id=callback.id,
+            )
+            try:
+                await asyncio.wait_for(loading_done.wait(), timeout=0.8)
+            except asyncio.TimeoutError:
+                continue
+
+    loading_task = asyncio.create_task(_animate_payment_loading())
     if isinstance(category_id, str) and isinstance(input_text, str):
-        await _send_preview_before_payment(
-            target_message=callback.message,
-            state=state,
-            preview_service=preview_service,
-            template_repository=template_repository,
-            user_id=callback.from_user.id,
-            category_id=category_id,
-            templates=templates,
-            input_text=input_text,
-        )
+        try:
+            await _send_preview_before_payment(
+                target_message=callback.message,
+                state=state,
+                preview_service=preview_service,
+                template_repository=template_repository,
+                user_id=callback.from_user.id,
+                category_id=category_id,
+                templates=templates,
+                input_text=input_text,
+            )
+        finally:
+            loading_done.set()
+            with suppress(Exception):
+                await loading_task
+    else:
+        loading_done.set()
+        with suppress(Exception):
+            await loading_task
 
     await state.set_state(CreatePackState.payment)
 
@@ -567,6 +641,7 @@ async def _run_generation_pipeline(
 
     category_id = data.get("selected_category_id")
     input_text = data.get("input_text")
+    input_username = data.get("input_username")
     pack_title_input = str(data.get("pack_title", "")).strip()
     selected_ids = data.get("selected_template_ids", [])
     context_id = data.get("preview_context_id")
@@ -582,6 +657,28 @@ async def _run_generation_pipeline(
             pricing_service=pricing_service,
         )
         return
+
+    username_layer_text = ""
+    layer_text_overrides: dict[str, str] | None = None
+    if category_id == PASSPORT_CATEGORY_ID:
+        username_layer_text = _normalize_passport_username_for_layer(input_username)
+        if not username_layer_text:
+            await trigger_message.answer("Не хватает username для пакета «Паспорт». Запустите создание заново.")
+            from app.start import show_main_menu
+
+            await show_main_menu(
+                target=trigger_message,
+                state=state,
+                user_repository=user_repository,
+                pricing_service=pricing_service,
+            )
+            return
+        layer_text_overrides = {PASSPORT_USERNAME_LAYER_NAME: username_layer_text}
+        logger.info(
+            "Passport username prepared category=%s username_text=%s",
+            category_id,
+            username_layer_text,
+        )
 
     category = template_repository.get_category(category_id)
     templates = template_repository.get_templates_by_ids(list(selected_ids))
@@ -629,17 +726,27 @@ async def _run_generation_pipeline(
     processed_by_id: dict[int, dict] = {}
     processed_stats_by_id: dict[int, object] = {}
     enable_recolor = bool(category.supports_recolor)
-    for index, template in enumerate(templates, start=1):
-        source_json = await asyncio.to_thread(lottie_service.load_lottie_json, template.file_path)
-        processed_payload, process_stats = await asyncio.to_thread(
-            lottie_service.process_template_data,
-            source_data=source_json,
-            new_text=input_text,
-            stroke_hex=stroke_color,
-            elements_hex=elements_color,
-            enable_recolor=enable_recolor,
-            template_name=template.file_name,
-        )
+    processing_sem = asyncio.Semaphore(GENERATION_CONCURRENCY)
+
+    async def _process_template_parallel(template) -> tuple[object, dict, object]:
+        async with processing_sem:
+            source_json = await asyncio.to_thread(lottie_service.load_lottie_json, template.file_path)
+            processed_payload, process_stats = await asyncio.to_thread(
+                lottie_service.process_template_data,
+                source_data=source_json,
+                new_text=input_text,
+                layer_text_overrides=layer_text_overrides,
+                stroke_hex=stroke_color,
+                elements_hex=elements_color,
+                enable_recolor=enable_recolor,
+                template_name=template.file_name,
+            )
+            return template, processed_payload, process_stats
+
+    processing_tasks = [asyncio.create_task(_process_template_parallel(template)) for template in templates]
+    processed_count = 0
+    for completed_task in asyncio.as_completed(processing_tasks):
+        template, processed_payload, process_stats = await completed_task
         processed_by_id[template.id] = processed_payload
         processed_stats_by_id[template.id] = process_stats
 
@@ -670,14 +777,18 @@ async def _run_generation_pipeline(
             layers_count,
         )
 
-        percent = int(index / len(templates) * 100)
+        processed_count += 1
+        percent = int(processed_count / len(templates) * 100)
         await progress_service.edit_progress(
             progress_message,
             stage_index=2,
             total_stages=total_stages,
             stage_name=STAGES[1],
             percent=percent,
-            detail=f"{index}/{len(templates)} {template.file_name} | замен: {process_stats.text_keyframes_updated}",
+            detail=(
+                f"{processed_count}/{len(templates)} {template.file_name} | "
+                f"замен: {process_stats.text_keyframes_updated}"
+            ),
         )
 
     if not enable_recolor:
@@ -711,38 +822,50 @@ async def _run_generation_pipeline(
             detail=detail,
         )
 
-    emoji_files: list[tuple[str, bytes]] = []
-    for index, template in enumerate(templates, start=1):
-        payload = processed_by_id[template.id]
-        layers = payload.get("layers")
-        layers_count = len(layers) if isinstance(layers, list) else 0
-        glyph_bank_exists = bool(
-            isinstance(layers, list)
-            and any(
-                isinstance(layer, dict) and str(layer.get("nm", "")).strip().lower() == "glyph_bank"
-                for layer in layers
+    build_sem = asyncio.Semaphore(GENERATION_CONCURRENCY)
+
+    async def _build_tgs_parallel(template) -> tuple[int, str, bytes]:
+        async with build_sem:
+            payload = processed_by_id[template.id]
+            layers = payload.get("layers")
+            layers_count = len(layers) if isinstance(layers, list) else 0
+            glyph_bank_exists = bool(
+                isinstance(layers, list)
+                and any(
+                    isinstance(layer, dict) and str(layer.get("nm", "")).strip().lower() == "glyph_bank"
+                    for layer in layers
+                )
             )
-        )
-        logger.info(
-            "Final TGS prebuild user_id=%s template=%s glyph_bank layers removed count=%s final layers count before build=%s glyph_bank_exists_before_build=%s",
-            user_id,
-            template.file_name,
-            0 if glyph_bank_exists else 1,
-            layers_count,
-            glyph_bank_exists,
-        )
-        tgs_bytes = await asyncio.to_thread(lottie_service.build_tgs, payload)
-        tgs_name = f"{Path(template.file_name).stem}.tgs"
-        emoji_files.append((tgs_name, tgs_bytes))
-        percent = int(index / len(templates) * 100)
+            logger.info(
+                "Final TGS prebuild user_id=%s template=%s glyph_bank layers removed count=%s final layers count before build=%s glyph_bank_exists_before_build=%s",
+                user_id,
+                template.file_name,
+                0 if glyph_bank_exists else 1,
+                layers_count,
+                glyph_bank_exists,
+            )
+            tgs_bytes = await asyncio.to_thread(lottie_service.build_tgs, payload)
+            tgs_name = f"{Path(template.file_name).stem}.tgs"
+            return template.id, tgs_name, tgs_bytes
+
+    build_tasks = [asyncio.create_task(_build_tgs_parallel(template)) for template in templates]
+    built_tgs_by_id: dict[int, tuple[str, bytes]] = {}
+    built_count = 0
+    for completed_task in asyncio.as_completed(build_tasks):
+        template_id, tgs_name, tgs_bytes = await completed_task
+        built_tgs_by_id[template_id] = (tgs_name, tgs_bytes)
+        built_count += 1
+        percent = int(built_count / len(templates) * 100)
         await progress_service.edit_progress(
             progress_message,
             stage_index=4,
             total_stages=total_stages,
             stage_name=STAGES[3],
             percent=percent,
-            detail=f"{index}/{len(templates)} {tgs_name}",
+            detail=f"{built_count}/{len(templates)} {tgs_name}",
         )
+
+    emoji_files: list[tuple[str, bytes]] = [built_tgs_by_id[template.id] for template in templates]
 
     base_title = pack_title_input or input_text
     pack_title = f"{base_title} @Hep_kerstickbot".strip()

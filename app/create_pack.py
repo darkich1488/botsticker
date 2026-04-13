@@ -20,6 +20,22 @@ from app.utils.safe_edit import safe_edit_message
 
 router = Router(name="create_pack")
 logger = logging.getLogger(__name__)
+PASSPORT_CATEGORY_ID = "passport"
+PASSPORT_USERNAME_MAX_LEN = 33  # @ + up to 32 chars
+
+
+def _normalize_passport_username(raw: str) -> str:
+    value = raw.strip()
+    lower = value.lower()
+    for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
+        if lower.startswith(prefix):
+            value = value[len(prefix):]
+            break
+    value = value.split("?", 1)[0].split("/", 1)[0].strip()
+    value = value.lstrip("@").strip()
+    if not value:
+        return ""
+    return f"@{value}"
 
 
 async def _safe_delete_message(message: Message) -> None:
@@ -137,6 +153,7 @@ async def choose_category(
         await state.update_data(
             selected_category_id=category.id,
             input_text="",
+            input_username="",
             pack_title="",
             selected_template_ids=[],
             current_page=1,
@@ -176,7 +193,30 @@ async def receive_text(message: Message, state: FSMContext) -> None:
         await message.answer("Текст слишком длинный. Максимум 20 символов.")
         return
 
+    data = await state.get_data()
+    selected_category_id = data.get("selected_category_id")
     await state.update_data(input_text=text)
+    if selected_category_id == PASSPORT_CATEGORY_ID:
+        await state.set_state(CreatePackState.waiting_username)
+        await _safe_delete_message(message)
+        await _send_prompt(message, state, "Введите username для слоя «юзер» (можно с @).")
+        return
+    await state.set_state(CreatePackState.waiting_pack_title)
+    await _safe_delete_message(message)
+    await _send_prompt(message, state, "Введите название стикерпака.")
+
+
+@router.message(CreatePackState.waiting_username)
+async def receive_username(message: Message, state: FSMContext) -> None:
+    username = _normalize_passport_username(message.text or "")
+    if not username:
+        await message.answer("Username пустой. Введите username (например, @nickname).")
+        return
+    if len(username) > PASSPORT_USERNAME_MAX_LEN:
+        await message.answer("Username слишком длинный. Максимум 32 символа без @.")
+        return
+
+    await state.update_data(input_username=username)
     await state.set_state(CreatePackState.waiting_pack_title)
     await _safe_delete_message(message)
     await _send_prompt(message, state, "Введите название стикерпака.")

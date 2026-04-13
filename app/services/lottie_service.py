@@ -68,6 +68,17 @@ _EMOJI6_FIXED_FONT_SIZE = 56.0
 _EMOJI6_VISUAL_Y_NUDGE_PX = -22.0
 _EMOJI8_TEMPLATE_FILE = "emoji7.json"
 _EMOJI8_NESTED_TEXT_TEMPLATE_FILE = "emoji8.json"
+_PASSPORT_TEMPLATE_FILE = "pas1.json"
+_PASSPORT2_TEMPLATE_FILE = "pas2.json"
+_PASSPORT_USER_LAYER_NAME = "юзер"
+_PASSPORT_MAIN_TEXT_FIXED_FONT_SIZE = 56.0
+_PASSPORT_MAIN_VISUAL_X_NUDGE_PX = -148.0
+_PASSPORT_MAIN_VISUAL_Y_NUDGE_PX = -35.0
+_PASSPORT_USER_VISUAL_X_NUDGE_PX = 20.0
+_PASSPORT_USER_VISUAL_Y_NUDGE_PX = -15.0
+_PASSPORT2_MAIN_VISUAL_Y_NUDGE_PX = -40.0
+_PASSPORT2_USER_VISUAL_X_NUDGE_PX = 10.0
+_PASSPORT2_TEXT_SIZE_DELTA_PX = 10.0
 _EMOJI8_NESTED_FIXED_FONT_SIZE = 32.4
 _EMOJI8_NESTED_VISUAL_X_NUDGE_PX = -380.0
 _EMOJI8_FIXED_FONT_SIZE = 64.0
@@ -161,6 +172,23 @@ _EMOJI41_VISUAL_X_NUDGE_PX = -654.0
 _EMOJI42_TEMPLATE_FILE = "emoji42.json"
 _EMOJI42_VISUAL_X_NUDGE_PX = -5.0
 _EMOJI42_VISUAL_Y_NUDGE_PX = 230.0
+_EMOJI43_TEMPLATE_FILE = "emoji43.json"
+_EMOJI43_FIXED_FONT_SIZE = 116.4
+_EMOJI44_TEMPLATE_FILE = "emoji44.json"
+_EMOJI44_FIXED_FONT_SIZE = 112.4
+_EMOJI44_VISUAL_Y_NUDGE_PX = -20.0
+_EMOJI45_TEMPLATE_FILE = "emoji45.json"
+_EMOJI45_FIXED_FONT_SIZE = 96.4
+_EMOJI45_VISUAL_Y_NUDGE_PX = -10.0
+_EMOJI46_TEMPLATE_FILE = "emoji46.json"
+_EMOJI46_VISUAL_X_NUDGE_PX = 10.0
+_EMOJI46_VISUAL_Y_NUDGE_PX = -10.0
+_EMOJI47_TEMPLATE_FILE = "emoji47.json"
+_EMOJI47_VISUAL_X_NUDGE_PX = 100.0
+_EMOJI48_TEMPLATE_FILE = "emoji48.json"
+_EMOJI48_FIXED_FONT_SIZE = 112.4
+_EMOJI48_VISUAL_X_NUDGE_PX = -15.0
+_EMOJI48_VISUAL_Y_NUDGE_PX = -10.0
 _ZHOPBOL2_TEMPLATE_FILE = "жопболь2.json"
 _ZHOPBOL2_VISUAL_Y_NUDGE_PX = -20.0
 TELEGRAM_TGS_MAX_BYTES = 64 * 1024
@@ -1505,6 +1533,8 @@ def inject_text_shapes(
         _EMOJI37_TEMPLATE_FILE,
         _EMOJI40_TEMPLATE_FILE,
         _EMOJI41_TEMPLATE_FILE,
+        _PASSPORT_TEMPLATE_FILE,
+        _PASSPORT2_TEMPLATE_FILE,
     }
 
     layers_by_ind: dict[int, dict[str, Any]] = {}
@@ -2234,6 +2264,7 @@ def inject_text_shapes(
                     tr_k[0] = round(nudged_x, 6)
                     local_offset_x = nudged_x
                     final_tr_p_x = nudged_x
+        current_layer_name_norm = _normalize_name(name_raw)
         desired_visual_x_nudge_px = 0.0
         computed_local_x_nudge: float | None = None
         final_tr_p_x_before_visual_nudge = final_tr_p_x
@@ -2289,6 +2320,20 @@ def inject_text_shapes(
             desired_visual_x_nudge_px = _EMOJI41_VISUAL_X_NUDGE_PX
         elif template_name_lc == _EMOJI42_TEMPLATE_FILE:
             desired_visual_x_nudge_px = _EMOJI42_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI46_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI46_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI47_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI47_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _EMOJI48_TEMPLATE_FILE:
+            desired_visual_x_nudge_px = _EMOJI48_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _PASSPORT_TEMPLATE_FILE:
+            if current_layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME):
+                desired_visual_x_nudge_px = _PASSPORT_MAIN_VISUAL_X_NUDGE_PX
+            elif current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
+                desired_visual_x_nudge_px = _PASSPORT_USER_VISUAL_X_NUDGE_PX
+        elif template_name_lc == _PASSPORT2_TEMPLATE_FILE:
+            if current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
+                desired_visual_x_nudge_px = _PASSPORT2_USER_VISUAL_X_NUDGE_PX
         if abs(desired_visual_x_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list) and tr_k:
@@ -2356,6 +2401,22 @@ def inject_text_shapes(
             desired_visual_y_nudge_px = _EMOJI40_VISUAL_Y_NUDGE_PX
         elif template_name_lc == _EMOJI42_TEMPLATE_FILE:
             desired_visual_y_nudge_px = _EMOJI42_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI44_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI44_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI45_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI45_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI46_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI46_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _EMOJI48_TEMPLATE_FILE:
+            desired_visual_y_nudge_px = _EMOJI48_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _PASSPORT_TEMPLATE_FILE:
+            if current_layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT_MAIN_VISUAL_Y_NUDGE_PX
+            elif current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT_USER_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _PASSPORT2_TEMPLATE_FILE:
+            if current_layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT2_MAIN_VISUAL_Y_NUDGE_PX
         if abs(desired_visual_y_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list):
@@ -3422,6 +3483,7 @@ def replace_text_in_lottie(
     data: dict[str, Any],
     new_text: str,
     target_layer_names: set[str] | None = None,
+    layer_text_overrides: dict[str, str] | None = None,
     force_text_position: bool = True,
     text_position_override: list[float] | None = None,
     text_box_config: TextBoxConfig | None = None,
@@ -3479,7 +3541,21 @@ def replace_text_in_lottie(
         fixed_font_size_for_template = _EMOJI31_FIXED_FONT_SIZE
     elif template_name_value.lower() == _EMOJI33_TEMPLATE_FILE:
         fixed_font_size_for_template = _EMOJI33_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI43_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI43_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI44_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI44_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI45_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI45_FIXED_FONT_SIZE
+    elif template_name_value.lower() == _EMOJI48_TEMPLATE_FILE:
+        fixed_font_size_for_template = _EMOJI48_FIXED_FONT_SIZE
     target_names = {name.lower() for name in (target_layer_names or set())}
+    normalized_layer_text_overrides: dict[str, str] = {}
+    for layer_name_key, layer_text_value in (layer_text_overrides or {}).items():
+        normalized_key = _normalize_name(str(layer_name_key).strip())
+        if not normalized_key:
+            continue
+        normalized_layer_text_overrides[normalized_key] = str(layer_text_value)
     comp_width = _as_float(data.get("w"))
     comp_height = _as_float(data.get("h"))
     top_layers = data.get("layers") if isinstance(data.get("layers"), list) else []
@@ -3507,9 +3583,17 @@ def replace_text_in_lottie(
                 layer_name or "<unnamed>",
             )
             continue
+        layer_name_norm = _normalize_name(layer_name)
         layer_name_lc = layer_name.lower()
         if target_names and layer_name_lc not in target_names:
             continue
+        replacement_text = normalized_layer_text_overrides.get(layer_name_norm, new_text)
+        current_fixed_font_size_for_layer = fixed_font_size_for_template
+        if (
+            template_name_value.lower() == _PASSPORT_TEMPLATE_FILE
+            and layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME)
+        ):
+            current_fixed_font_size_for_layer = _PASSPORT_MAIN_TEXT_FIXED_FONT_SIZE
 
         keyframes = text_container.get("d", {}).get("k")
         if not isinstance(keyframes, list):
@@ -3626,8 +3710,8 @@ def replace_text_in_lottie(
 
             stats.text_keyframes_found += 1
             old_text = style.get("t")
-            if old_text != new_text:
-                style["t"] = new_text
+            if old_text != replacement_text:
+                style["t"] = replacement_text
                 stats.text_keyframes_updated += 1
             final_text_value = style.get("t")
 
@@ -3641,20 +3725,20 @@ def replace_text_in_lottie(
             ):
                 _apply_text_box_layout(
                     style=style,
-                    new_text=new_text,
+                    new_text=replacement_text,
                     text_box_config=effective_text_box,
                     path=style_path,
                     logger=active_logger,
                 )
             elif effective_text_box is not None and autofit_shrink_disabled_for_template:
                 computed_autofit_size, _computed_tracking, _estimated_width, _max_word_len, _word_penalty_px = _compute_text_box_layout_values(
-                    new_text=new_text,
+                    new_text=replacement_text,
                     text_box_config=effective_text_box,
                     old_tracking=_as_float(style.get("tr")),
                 )
                 if source_text_size is not None:
                     style["s"] = round(source_text_size * _EMOJI4_FONT_SIZE_MULTIPLIER, 6)
-                text_len_for_template = _text_len_for_fit(str(style.get("t", new_text)))
+                text_len_for_template = _text_len_for_fit(str(style.get("t", replacement_text)))
                 if template_name_value.lower() == _EMOJI4_TEMPLATE_FILE and text_len_for_template > 4:
                     previous_size = _as_float(style.get("s"))
                     extra_shrink_px = 1.0 + max(0, text_len_for_template - 5) * 0.75
@@ -3686,9 +3770,9 @@ def replace_text_in_lottie(
                     True,
                     _as_float(style.get("s")),
                 )
-            if fixed_font_size_for_template is not None:
-                style["s"] = round(float(fixed_font_size_for_template), 6)
-                text_len_for_template = _text_len_for_fit(str(style.get("t", new_text)))
+            if current_fixed_font_size_for_layer is not None:
+                style["s"] = round(float(current_fixed_font_size_for_layer), 6)
+                text_len_for_template = _text_len_for_fit(str(style.get("t", replacement_text)))
                 if template_name_value.lower() == _EMOJI8_TEMPLATE_FILE and text_len_for_template > 4:
                     previous_size = _as_float(style.get("s"))
                     extra_shrink_px = 6.0 + max(0, text_len_for_template - 5) * 3.0
@@ -3723,7 +3807,7 @@ def replace_text_in_lottie(
                 emoji10_old_size = _as_float(style.get("s"))
                 if emoji10_old_size is not None:
                     emoji10_new_size = max(10.0, (emoji10_old_size * _EMOJI10_TEXT_SIZE_MULTIPLIER) - _EMOJI10_TEXT_SIZE_DELTA_PX)
-                    text_len_for_template = _text_len_for_fit(str(style.get("t", new_text)))
+                    text_len_for_template = _text_len_for_fit(str(style.get("t", replacement_text)))
                     if text_len_for_template > 4:
                         emoji10_extra_shrink = _EMOJI10_LONG_TEXT_SHRINK_BASE_PX + max(0, text_len_for_template - 5) * _EMOJI10_LONG_TEXT_SHRINK_STEP_PX
                         emoji10_new_size = max(10.0, emoji10_new_size - emoji10_extra_shrink)
@@ -3738,6 +3822,23 @@ def replace_text_in_lottie(
                         "Template font size tweak template_name=%s old_size=%s final_font_size=%s",
                         template_name_value or None,
                         emoji10_old_size,
+                        _as_float(style.get("s")),
+                    )
+            if (
+                template_name_value.lower() == _PASSPORT2_TEMPLATE_FILE
+                and layer_name_norm in {
+                    _normalize_name(TARGET_TEXT_LAYER_NAME),
+                    _normalize_name(_PASSPORT_USER_LAYER_NAME),
+                }
+            ):
+                passport2_old_size = _as_float(style.get("s"))
+                if passport2_old_size is not None:
+                    style["s"] = round(max(10.0, passport2_old_size + _PASSPORT2_TEXT_SIZE_DELTA_PX), 6)
+                    active_logger.info(
+                        "Passport2 size boost template_name=%s layer=%s old_size=%s final_font_size=%s",
+                        template_name_value or None,
+                        layer_name,
+                        passport2_old_size,
                         _as_float(style.get("s")),
                     )
             style_sz = style.get("sz")
@@ -3992,6 +4093,54 @@ def update_text_layer_colors(
         stats.skipped_color_nodes,
     )
     return stats
+
+
+def force_text_layer_fill_color(
+    data: dict[str, Any],
+    layer_name: str,
+    text_fill_hex: str,
+    logger: logging.Logger | None = None,
+) -> int:
+    active_logger = logger or logging.getLogger(__name__)
+    target_layer_name = _normalize_name(layer_name)
+    fill_rgba = hex_to_rgba(text_fill_hex)
+    fill_rgb = [float(fill_rgba[0]), float(fill_rgba[1]), float(fill_rgba[2])]
+    keyframes_updated = 0
+
+    for path, node in _walk_lottie(data):
+        if not isinstance(node, dict):
+            continue
+        if _normalize_name(str(node.get("nm", "")).strip()) != target_layer_name:
+            continue
+        text_container = node.get("t")
+        if not isinstance(text_container, dict):
+            continue
+        keyframes = text_container.get("d", {}).get("k")
+        if not isinstance(keyframes, list):
+            continue
+        for index, keyframe in enumerate(keyframes):
+            if not isinstance(keyframe, dict):
+                continue
+            style = keyframe.get("s")
+            if not isinstance(style, dict):
+                continue
+            old_fc = copy.deepcopy(style.get("fc"))
+            style["fc"] = list(fill_rgb)
+            keyframes_updated += 1
+            active_logger.info(
+                "Forced text fill color path=%s old=%s new=%s",
+                f"{path}.t.d.k[{index}].s.fc",
+                _serialize_for_log(old_fc),
+                _serialize_for_log(style.get("fc")),
+            )
+
+    active_logger.info(
+        "Forced text fill color done layer=%s fill=%s keyframes_updated=%s",
+        layer_name,
+        text_fill_hex,
+        keyframes_updated,
+    )
+    return keyframes_updated
 
 
 def recolor_lottie(
@@ -4424,6 +4573,7 @@ def process_template_file(
     path = Path(template_path).expanduser()
     if not path.is_absolute():
         path = path.resolve()
+    template_name_norm = path.name.strip().lower()
     logger.info(
         (
             "Generation start template=%s text=%r stroke=%s elements=%s enable_recolor=%s "
@@ -4475,6 +4625,13 @@ def process_template_file(
                 text_stroke_hex=effective_stroke,
                 logger=logger,
             )
+    if template_name_norm in {_PASSPORT2_TEMPLATE_FILE}:
+        force_text_layer_fill_color(
+            data=data,
+            layer_name=_PASSPORT_USER_LAYER_NAME,
+            text_fill_hex="#000000",
+            logger=logger,
+        )
     if debug_move_text_layer_to_top:
         move_text_layer_to_top(
             data=data,
@@ -4521,6 +4678,7 @@ class LottieService:
         data: dict[str, Any],
         new_text: str,
         target_layer_names: set[str] | None = None,
+        layer_text_overrides: dict[str, str] | None = None,
         force_text_position: bool = True,
         text_position_override: list[float] | None = None,
         text_box_config: TextBoxConfig | None = None,
@@ -4532,7 +4690,8 @@ class LottieService:
         self._logger.info(
             (
                 "Text replacement start text=%r force_text_position=%s text_position_override=%s text_box_config=%s "
-                "force_min_text_size=%s min_visible_text_size_warning=%s text_debug_mode=%s"
+                "force_min_text_size=%s min_visible_text_size_warning=%s text_debug_mode=%s "
+                "layer_text_overrides=%s"
             ),
             new_text,
             force_text_position,
@@ -4541,12 +4700,14 @@ class LottieService:
             force_min_text_size,
             min_visible_text_size_warning,
             text_debug_mode,
+            _serialize_for_log(layer_text_overrides),
         )
         try:
             return replace_text_in_lottie(
                 data=data,
                 new_text=new_text,
                 target_layer_names=target_layer_names,
+                layer_text_overrides=layer_text_overrides,
                 force_text_position=force_text_position,
                 text_position_override=text_position_override,
                 text_box_config=text_box_config,
@@ -4644,6 +4805,7 @@ class LottieService:
         new_text: str,
         stroke_hex: str,
         elements_hex: str,
+        layer_text_overrides: dict[str, str] | None = None,
         enable_recolor: bool = True,
         text_fill_hex: str | None = None,
         text_stroke_hex: str | None = None,
@@ -4661,6 +4823,7 @@ class LottieService:
         self._logger.info(
             (
                 "Generation start (in-memory template) text=%r stroke=%s elements=%s enable_recolor=%s "
+                "layer_text_overrides=%s "
                 "text_fill=%s text_stroke=%s apply_text_color_even_when_recolor_disabled=%s "
                 "force_text_position=%s text_position_override=%s text_box_config=%s "
                 "force_min_text_size=%s min_visible_text_size_warning=%s text_debug_mode=%s "
@@ -4670,6 +4833,7 @@ class LottieService:
             stroke_hex,
             elements_hex,
             enable_recolor,
+            _serialize_for_log(layer_text_overrides),
             text_fill_hex,
             text_stroke_hex,
             apply_text_color_even_when_recolor_disabled,
@@ -4685,9 +4849,11 @@ class LottieService:
         )
         try:
             payload = copy.deepcopy(source_data)
+            template_name_norm = (template_name or "").strip().lower()
             text_stats = self.replace_text(
                 payload,
                 new_text,
+                layer_text_overrides=layer_text_overrides,
                 force_text_position=force_text_position,
                 text_position_override=text_position_override,
                 text_box_config=text_box_config,
@@ -4714,6 +4880,13 @@ class LottieService:
                         text_fill_hex=effective_fill,
                         text_stroke_hex=effective_stroke,
                     )
+            if template_name_norm in {_PASSPORT2_TEMPLATE_FILE}:
+                force_text_layer_fill_color(
+                    data=payload,
+                    layer_name=_PASSPORT_USER_LAYER_NAME,
+                    text_fill_hex="#000000",
+                    logger=self._logger,
+                )
             if debug_move_text_layer_to_top:
                 move_text_layer_to_top(
                     data=payload,
@@ -4727,8 +4900,9 @@ class LottieService:
                 template_name=template_name,
                 logger=self._logger,
             )
-            template_name_norm = (template_name or "").strip().lower()
             if template_name_norm in {
+                _PASSPORT_TEMPLATE_FILE,
+                _PASSPORT2_TEMPLATE_FILE,
                 _EMOJI8_NESTED_TEXT_TEMPLATE_FILE,
                 _EMOJI10_TEMPLATE_FILE,
                 _EMOJI14_TEMPLATE_FILE,
@@ -4764,6 +4938,8 @@ class LottieService:
                                 if root_h is not None:
                                     asset["h"] = int(round(root_h))
                         if template_name_norm in {
+                            _PASSPORT_TEMPLATE_FILE,
+                            _PASSPORT2_TEMPLATE_FILE,
                             _EMOJI14_TEMPLATE_FILE,
                             _EMOJI40_TEMPLATE_FILE,
                             _EMOJI41_TEMPLATE_FILE,

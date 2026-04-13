@@ -10,7 +10,12 @@ from app.models.category import TemplateCategory
 def categories_kb(categories: Sequence[TemplateCategory]) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for category in categories:
-        prefix = "🟢" if category.id == "basic" else "🛠️"
+        if category.id == "basic":
+            prefix = "🟢"
+        elif category.id == "passport":
+            prefix = "🛂"
+        else:
+            prefix = "🛠️"
         kb.button(
             text=f"{prefix} {category.title}",
             callback_data=CategoryCallback(category_id=category.id).pack(),
