@@ -108,11 +108,33 @@ _BASIC_TEMPLATE_CUSTOM_EMOJI_IDS: dict[int, str] = {
     48: "5400378344824936245",
 }
 
+_PASSPORT_TEMPLATE_ICONS: dict[int, str] = {
+    1: "🪪",
+    2: "🪪",
+    3: "🪪",
+    4: "🪪",
+    5: "🪪",
+    6: "🪪",
+    7: "🪪",
+}
+
+_PASSPORT_TEMPLATE_CUSTOM_EMOJI_IDS: dict[int, str] = {
+    1: "5415767612078464316",
+    2: "5415912867872414343",
+    3: "5416082325807079272",
+    4: "5418322808381938043",
+    5: "5416062281194708639",
+    6: "5415882343539843711",
+    7: "5416062886785096262",
+}
+
 
 def _template_button_text(template: TemplateModel, selected: bool) -> str:
     icon = "🧩"
     if template.category_id == "basic":
         icon = _BASIC_TEMPLATE_ICONS.get(template.order_index, icon)
+    elif template.category_id == "passport":
+        icon = _PASSPORT_TEMPLATE_ICONS.get(template.order_index, icon)
     selected_mark = "✅" if selected else ""
     return f"{icon} {template.order_index}{selected_mark}"
 
@@ -155,6 +177,10 @@ def template_selection_kb(
         }
         if template.category_id == "basic":
             custom_emoji_id = _BASIC_TEMPLATE_CUSTOM_EMOJI_IDS.get(template.order_index)
+            if custom_emoji_id:
+                button_payload["icon_custom_emoji_id"] = custom_emoji_id
+        elif template.category_id == "passport":
+            custom_emoji_id = _PASSPORT_TEMPLATE_CUSTOM_EMOJI_IDS.get(template.order_index)
             if custom_emoji_id:
                 button_payload["icon_custom_emoji_id"] = custom_emoji_id
         template_buttons.append(InlineKeyboardButton(**button_payload))
