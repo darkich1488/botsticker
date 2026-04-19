@@ -70,14 +70,47 @@ _EMOJI8_TEMPLATE_FILE = "emoji7.json"
 _EMOJI8_NESTED_TEXT_TEMPLATE_FILE = "emoji8.json"
 _PASSPORT_TEMPLATE_FILE = "pas1.json"
 _PASSPORT2_TEMPLATE_FILE = "pas2.json"
+_PASSPORT3_TEMPLATE_FILE = "pass3.json"
+_PASSPORT4_TEMPLATE_FILE = "pass4.json"
+_PASSPORT5_TEMPLATE_FILE = "pass5.json"
+_PASSPORT6_TEMPLATE_FILE = "pass6.json"
+_PASSPORT7_TEMPLATE_FILE = "pass7.json"
+_PASSPORT_3_TO_7_TEMPLATE_FILES = {
+    _PASSPORT3_TEMPLATE_FILE,
+    _PASSPORT4_TEMPLATE_FILE,
+    _PASSPORT5_TEMPLATE_FILE,
+    _PASSPORT6_TEMPLATE_FILE,
+    _PASSPORT7_TEMPLATE_FILE,
+}
+_PASSPORT_4_TO_7_TEMPLATE_FILES = {
+    _PASSPORT4_TEMPLATE_FILE,
+    _PASSPORT5_TEMPLATE_FILE,
+    _PASSPORT6_TEMPLATE_FILE,
+    _PASSPORT7_TEMPLATE_FILE,
+}
+_PASSPORT_4_6_7_TEMPLATE_FILES = {
+    _PASSPORT4_TEMPLATE_FILE,
+    _PASSPORT6_TEMPLATE_FILE,
+    _PASSPORT7_TEMPLATE_FILE,
+}
+_PASSPORT_SECONDARY_TEMPLATE_FILES = {
+    _PASSPORT2_TEMPLATE_FILE,
+    *_PASSPORT_3_TO_7_TEMPLATE_FILES,
+}
 _PASSPORT_USER_LAYER_NAME = "юзер"
 _PASSPORT_MAIN_TEXT_FIXED_FONT_SIZE = 56.0
 _PASSPORT_MAIN_VISUAL_X_NUDGE_PX = -148.0
 _PASSPORT_MAIN_VISUAL_Y_NUDGE_PX = -35.0
 _PASSPORT_USER_VISUAL_X_NUDGE_PX = 20.0
 _PASSPORT_USER_VISUAL_Y_NUDGE_PX = -15.0
-_PASSPORT2_MAIN_VISUAL_Y_NUDGE_PX = -40.0
-_PASSPORT2_USER_VISUAL_X_NUDGE_PX = 10.0
+_PASSPORT2_MAIN_VISUAL_Y_NUDGE_PX = -35.0
+_PASSPORT2_USER_VISUAL_X_NUDGE_PX = 20.0
+_PASSPORT2_7_USER_VISUAL_Y_NUDGE_PX = -5.0
+_PASSPORT3_MAIN_VISUAL_Y_NUDGE_PX = -35.0
+_PASSPORT4_6_7_MAIN_VISUAL_Y_NUDGE_PX = -30.0
+_PASSPORT5_MAIN_VISUAL_Y_NUDGE_PX = -25.0
+_PASSPORT3_7_USER_VISUAL_X_NUDGE_PX = -10.0
+_PASSPORT3_7_MAIN_VISUAL_X_NUDGE_PX = 10.0
 _PASSPORT2_TEXT_SIZE_DELTA_PX = 10.0
 _EMOJI8_NESTED_FIXED_FONT_SIZE = 32.4
 _EMOJI8_NESTED_VISUAL_X_NUDGE_PX = -380.0
@@ -1535,6 +1568,11 @@ def inject_text_shapes(
         _EMOJI41_TEMPLATE_FILE,
         _PASSPORT_TEMPLATE_FILE,
         _PASSPORT2_TEMPLATE_FILE,
+        _PASSPORT3_TEMPLATE_FILE,
+        _PASSPORT4_TEMPLATE_FILE,
+        _PASSPORT5_TEMPLATE_FILE,
+        _PASSPORT6_TEMPLATE_FILE,
+        _PASSPORT7_TEMPLATE_FILE,
     }
 
     layers_by_ind: dict[int, dict[str, Any]] = {}
@@ -2334,6 +2372,11 @@ def inject_text_shapes(
         elif template_name_lc == _PASSPORT2_TEMPLATE_FILE:
             if current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
                 desired_visual_x_nudge_px = _PASSPORT2_USER_VISUAL_X_NUDGE_PX
+        elif template_name_lc in _PASSPORT_3_TO_7_TEMPLATE_FILES:
+            if current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
+                desired_visual_x_nudge_px = _PASSPORT3_7_USER_VISUAL_X_NUDGE_PX
+            elif current_layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME):
+                desired_visual_x_nudge_px = _PASSPORT3_7_MAIN_VISUAL_X_NUDGE_PX
         if abs(desired_visual_x_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list) and tr_k:
@@ -2417,6 +2460,23 @@ def inject_text_shapes(
         elif template_name_lc == _PASSPORT2_TEMPLATE_FILE:
             if current_layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME):
                 desired_visual_y_nudge_px = _PASSPORT2_MAIN_VISUAL_Y_NUDGE_PX
+            elif current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT2_7_USER_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _PASSPORT3_TEMPLATE_FILE:
+            if current_layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT3_MAIN_VISUAL_Y_NUDGE_PX
+            elif current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT2_7_USER_VISUAL_Y_NUDGE_PX
+        elif template_name_lc == _PASSPORT5_TEMPLATE_FILE:
+            if current_layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT5_MAIN_VISUAL_Y_NUDGE_PX
+            elif current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT2_7_USER_VISUAL_Y_NUDGE_PX
+        elif template_name_lc in _PASSPORT_4_6_7_TEMPLATE_FILES:
+            if current_layer_name_norm == _normalize_name(TARGET_TEXT_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT4_6_7_MAIN_VISUAL_Y_NUDGE_PX
+            elif current_layer_name_norm == _normalize_name(_PASSPORT_USER_LAYER_NAME):
+                desired_visual_y_nudge_px = _PASSPORT2_7_USER_VISUAL_Y_NUDGE_PX
         if abs(desired_visual_y_nudge_px) > 1e-9 and isinstance(final_group_tr_p, dict):
             tr_k = final_group_tr_p.get("k")
             if isinstance(tr_k, list):
@@ -3825,7 +3885,7 @@ def replace_text_in_lottie(
                         _as_float(style.get("s")),
                     )
             if (
-                template_name_value.lower() == _PASSPORT2_TEMPLATE_FILE
+                template_name_value.lower() in _PASSPORT_SECONDARY_TEMPLATE_FILES
                 and layer_name_norm in {
                     _normalize_name(TARGET_TEXT_LAYER_NAME),
                     _normalize_name(_PASSPORT_USER_LAYER_NAME),
@@ -4625,11 +4685,18 @@ def process_template_file(
                 text_stroke_hex=effective_stroke,
                 logger=logger,
             )
-    if template_name_norm in {_PASSPORT2_TEMPLATE_FILE}:
+    if template_name_norm == _PASSPORT2_TEMPLATE_FILE:
         force_text_layer_fill_color(
             data=data,
             layer_name=_PASSPORT_USER_LAYER_NAME,
             text_fill_hex="#000000",
+            logger=logger,
+        )
+    elif template_name_norm in _PASSPORT_3_TO_7_TEMPLATE_FILES:
+        force_text_layer_fill_color(
+            data=data,
+            layer_name=_PASSPORT_USER_LAYER_NAME,
+            text_fill_hex="#FFFFFF",
             logger=logger,
         )
     if debug_move_text_layer_to_top:
@@ -4880,11 +4947,18 @@ class LottieService:
                         text_fill_hex=effective_fill,
                         text_stroke_hex=effective_stroke,
                     )
-            if template_name_norm in {_PASSPORT2_TEMPLATE_FILE}:
+            if template_name_norm == _PASSPORT2_TEMPLATE_FILE:
                 force_text_layer_fill_color(
                     data=payload,
                     layer_name=_PASSPORT_USER_LAYER_NAME,
                     text_fill_hex="#000000",
+                    logger=self._logger,
+                )
+            elif template_name_norm in _PASSPORT_3_TO_7_TEMPLATE_FILES:
+                force_text_layer_fill_color(
+                    data=payload,
+                    layer_name=_PASSPORT_USER_LAYER_NAME,
+                    text_fill_hex="#FFFFFF",
                     logger=self._logger,
                 )
             if debug_move_text_layer_to_top:
@@ -4903,6 +4977,11 @@ class LottieService:
             if template_name_norm in {
                 _PASSPORT_TEMPLATE_FILE,
                 _PASSPORT2_TEMPLATE_FILE,
+                _PASSPORT3_TEMPLATE_FILE,
+                _PASSPORT4_TEMPLATE_FILE,
+                _PASSPORT5_TEMPLATE_FILE,
+                _PASSPORT6_TEMPLATE_FILE,
+                _PASSPORT7_TEMPLATE_FILE,
                 _EMOJI8_NESTED_TEXT_TEMPLATE_FILE,
                 _EMOJI10_TEMPLATE_FILE,
                 _EMOJI14_TEMPLATE_FILE,
@@ -4940,6 +5019,11 @@ class LottieService:
                         if template_name_norm in {
                             _PASSPORT_TEMPLATE_FILE,
                             _PASSPORT2_TEMPLATE_FILE,
+                            _PASSPORT3_TEMPLATE_FILE,
+                            _PASSPORT4_TEMPLATE_FILE,
+                            _PASSPORT5_TEMPLATE_FILE,
+                            _PASSPORT6_TEMPLATE_FILE,
+                            _PASSPORT7_TEMPLATE_FILE,
                             _EMOJI14_TEMPLATE_FILE,
                             _EMOJI40_TEMPLATE_FILE,
                             _EMOJI41_TEMPLATE_FILE,
